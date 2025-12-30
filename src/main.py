@@ -47,10 +47,10 @@ class SmartThermo:
         if self.display:
             self.show_splash()
 
-        # Inizializza pulsante per entrare in setup
-        # Useremo il pulsante RIGHT (PIN 4) tenuto premuto all'avvio
+        # Inizializza pulsanti per controllo avvio
+        # RIGHT per entrare in setup all'avvio
+        # FIRE per bloccare l'avvio (debug mode)
         self.btn_right = Pin(self.config.PIN_RIGHT, Pin.IN, Pin.PULL_UP)
-        # Fire blocca l'avvio della app
         self.btn_fire = Pin(self.config.PIN_FIRE, Pin.IN, Pin.PULL_UP)
 
     def show_splash(self):
@@ -62,8 +62,12 @@ class SmartThermo:
         time.sleep(1)
 
     def check_setup_mode(self):
-        """Controlla se entrare in modalità setup (pulsante RIGHT premuto)"""
+        """Controlla se entrare in modalità setup (pulsante RIGHT premuto all'avvio)"""
         return self.btn_right.value() == 0
+
+    def check_debug_mode(self):
+        """Controlla se entrare in debug mode (pulsante FIRE premuto all'avvio)"""
+        return self.btn_fire.value() == 0
 
     def run_setup(self):
         """Avvia l'app di setup"""
@@ -85,6 +89,25 @@ class SmartThermo:
 
     def run_main_app(self):
         """Avvia l'app principale del termometro"""
+        # Se FIRE premuto all'avvio, entra in DEBUG MODE (blocca esecuzione)
+        if self.check_debug_mode():
+            print("\n" + "="*40)
+            print("DEBUG MODE - Execution halted")
+            print("FIRE button pressed at boot")
+            print("REPL available for debugging")
+            print("="*40 + "\n")
+
+            if self.display:
+                self.display.fill(0)
+                self.display.text("DEBUG MODE", 25, 20, 1)
+                self.display.text("REPL Ready", 25, 35, 1)
+                self.display.show()
+
+            # Loop infinito per mantenere il controllo e non far riavviare boot.py
+            while True:
+                time.sleep(1)
+
+        # Altrimenti avvia app normale
         print("Starting main app...")
 
         # Importa e avvia app principale
