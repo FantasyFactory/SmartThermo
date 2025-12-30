@@ -109,12 +109,12 @@ class SmartThermo:
 
     def run_main_app(self):
         """Avvia l'app principale del termometro"""
-        # Se FIRE premuto all'avvio, entra in DEBUG MODE (blocca esecuzione)
+        # Se FIRE premuto all'avvio, entra in DEBUG MODE (non avvia l'app)
         if self.check_debug_mode():
             print("\n" + "="*40)
-            print("DEBUG MODE - Execution halted")
+            print("DEBUG MODE - App NOT started")
             print("FIRE button pressed at boot")
-            print("REPL available for debugging")
+            print("REPL is now available")
             print("="*40 + "\n")
 
             if self.display:
@@ -123,17 +123,16 @@ class SmartThermo:
                 self.display.text("REPL Ready", 25, 35, 1)
                 self.display.show()
 
-            # Loop infinito per mantenere il controllo e non far riavviare boot.py
-            while True:
-                time.sleep(1)
+            # Non avviare l'app - semplicemente ritorna al REPL
+            # Thonny può ora connettersi senza causare reset
+            return
 
         # Altrimenti avvia app normale
         print("Starting main app...")
 
         # Importa e avvia app principale
         import app
-        if self.btn_fire.value() != 0:
-            app.main(self.display, self.i2c)
+        app.main(self.display, self.i2c)
 
         # Cleanup del modulo app per liberare memoria
         del sys.modules['app']
