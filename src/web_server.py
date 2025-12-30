@@ -88,6 +88,37 @@ class WebServer:
         except Exception as e:
             print(f"Error handling request: {e}")
 
+    def _send_string(self, sock, data):
+        """Invia una stringa in chunk"""
+        data_bytes = data.encode('utf-8')
+        total_sent = 0
+        chunk_size = 512
+
+        while total_sent < len(data_bytes):
+            chunk = data_bytes[total_sent:total_sent + chunk_size]
+            sent = sock.send(chunk)
+            if sent == 0:
+                break
+            total_sent += sent
+
+    def _send_response_chunked(self, sock, headers, body):
+        """Invia headers e body separatamente in chunk"""
+        # Invia headers
+        self._send_string(sock, headers)
+
+        # Invia body in chunk più grandi (direttamente da stringa)
+        body_bytes = body.encode('utf-8')
+        chunk_size = 512
+        offset = 0
+
+        while offset < len(body_bytes):
+            chunk = body_bytes[offset:offset + chunk_size]
+            sent = sock.send(chunk)
+            if sent == 0:
+                break
+            offset += sent
+            gc.collect()  # Libera memoria durante l'invio
+
     def _handle_client(self, client_socket):
         """Gestisce una richiesta client"""
         try:
@@ -124,20 +155,17 @@ class WebServer:
                 except:
                     pass
 
-            # Routing
+            # Routing - ora ritorna tupla (headers, body) o stringa per compatibilità
             response = self._route_request(method, path, body)
 
-            # Invia risposta in chunk per file grandi
-            response_bytes = response.encode('utf-8')
-            total_sent = 0
-            chunk_size = 1024  # Invia 1KB alla volta
-
-            while total_sent < len(response_bytes):
-                chunk = response_bytes[total_sent:total_sent + chunk_size]
-                sent = client_socket.send(chunk)
-                if sent == 0:
-                    break
-                total_sent += sent
+            # Gestisci risposta
+            if isinstance(response, tuple):
+                # Nuova modalità: headers e body separati
+                headers, body = response
+                self._send_response_chunked(client_socket, headers, body)
+            else:
+                # Vecchia modalità: stringa unica (per JSON API)
+                self._send_string(client_socket, response)
 
             client_socket.close()
 
@@ -359,12 +387,22 @@ class WebServer:
         return response
 
     def _serve_file(self, filename, content_type):
-        """Serve un file statico"""
+        """Serve un file statico - ritorna (headers, body) per invio efficiente"""
         try:
             with open(f'static/{filename}', 'r') as f:
                 body = f.read()
-            return self._response(200, content_type, body)
-        except:
+
+            # Crea headers separatamente
+            headers = "HTTP/1.1 200 OK\r\n"
+            headers += f"Content-Type: {content_type}\r\n"
+            headers += f"Content-Length: {len(body)}\r\n"
+            headers += "Connection: close\r\n"
+            headers += "Access-Control-Allow-Origin: *\r\n"
+            headers += "\r\n"
+
+            return (headers, body)
+        except Exception as e:
+            print(f"Error serving file {filename}: {e}")
             return self._response(404, 'text/plain', 'File not found')
 
     def cleanup(self):
