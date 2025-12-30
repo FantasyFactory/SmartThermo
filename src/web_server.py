@@ -127,8 +127,18 @@ class WebServer:
             # Routing
             response = self._route_request(method, path, body)
 
-            # Invia risposta
-            client_socket.send(response.encode('utf-8'))
+            # Invia risposta in chunk per file grandi
+            response_bytes = response.encode('utf-8')
+            total_sent = 0
+            chunk_size = 1024  # Invia 1KB alla volta
+
+            while total_sent < len(response_bytes):
+                chunk = response_bytes[total_sent:total_sent + chunk_size]
+                sent = client_socket.send(chunk)
+                if sent == 0:
+                    break
+                total_sent += sent
+
             client_socket.close()
 
             gc.collect()
