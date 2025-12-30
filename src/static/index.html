@@ -114,6 +114,23 @@
         </footer>
     </div>
 
+    <script>
+        // Test immediato - questo DEVE comparire nella console
+        console.log('=== INLINE SCRIPT EXECUTING ===');
+        console.log('DOM ready state:', document.readyState);
+
+        // Test caricamento app.js
+        window.addEventListener('error', function(e) {
+            console.error('ERROR loading script:', e.filename, e.message);
+        }, true);
+    </script>
+
     <script src="app.js"></script>
+
+    <script>
+        // Questo viene eseguito DOPO app.js
+        console.log('=== AFTER APP.JS ===');
+        console.log('DOMContentLoaded listeners:', typeof window.addEventListener);
+    </script>
 </body>
 </html>
