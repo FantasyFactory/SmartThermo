@@ -10,17 +10,19 @@ from config import Config
 class SetupApp:
     """Applicazione di setup/configurazione"""
 
-    def __init__(self, display):
+    def __init__(self, display, autotune_callback=None):
         """
         Inizializza l'app di setup
 
         Args:
             display: istanza del display OLED già inizializzato
+            autotune_callback: callback per auto-tune PID (opzionale)
         """
         self.display = display
         self.config = Config()
         self.menu = None
         self.exit_requested = False
+        self.autotune_callback = autotune_callback
 
     def _build_menu_tree(self):
         """Costruisce l'albero del menu di setup"""
@@ -185,16 +187,19 @@ class SetupApp:
                 break
 
     def _autotune_pid(self):
-        """Placeholder per auto-tuning PID"""
-        # Questa funzione verrà implementata nell'app principale
-        # Per ora mostra solo un messaggio
-        self.display.fill(0)
-        self.display.text("Auto-tune PID", 0, 0, 1)
-        self.display.text("Not implemented", 0, 12, 1)
-        self.display.text("in setup mode", 0, 24, 1)
-        self.display.show()
-        import time
-        time.sleep(2)
+        """Esegue auto-tuning PID chiamando il callback dell'app principale"""
+        if self.autotune_callback:
+            # Chiama la funzione di autotune dell'app principale
+            self.autotune_callback()
+        else:
+            # Fallback se callback non disponibile
+            self.display.fill(0)
+            self.display.text("Auto-tune PID", 0, 0, 1)
+            self.display.text("Not available", 0, 12, 1)
+            self.display.text("in setup mode", 0, 24, 1)
+            self.display.show()
+            import time
+            time.sleep(2)
 
     def _save_and_exit(self):
         """Salva la configurazione ed esce"""
@@ -261,9 +266,9 @@ class SetupApp:
         print("Setup app cleaned up")
 
 
-def main(display):
+def main(display, autotune_callback=None):
     """Entry point per l'app setup"""
-    app = SetupApp(display)
+    app = SetupApp(display, autotune_callback)
     app.run()
     del app
     gc.collect()

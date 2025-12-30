@@ -253,8 +253,8 @@ class ThermoApp:
                 self.editing_target = False
                 self._beep()
             else:
-                # Entra in setup (TODO: implementare)
-                pass
+                # Entra in setup
+                self._enter_setup()
 
         # FIRE: lettura in modalità OnShoot
         elif self._read_button(self.btn_fire):
@@ -507,6 +507,274 @@ class ThermoApp:
             self.last_btn_time = now
             return True
         return False
+
+    def _enter_setup(self):
+        """Entra nell'app di setup"""
+        print("Entering setup mode...")
+
+        # Spegni laser e buzzer
+        self.laser.value(0)
+        if self.buzzer:
+            self.buzzer.value(0)
+
+        # Ferma web server temporaneamente (mantiene WiFi)
+        # Non serve cleanup completo, solo pausa
+
+        # Importa e avvia setup passando callback per autotune
+        import sys
+        import setup
+
+        # Crea callback per autotune che chiama il metodo dell'app
+        autotune_callback = lambda: self.autotune_pid()
+
+        setup.main(self.display, autotune_callback)
+
+        # Cleanup modulo setup
+        del sys.modules['setup']
+        del setup
+        gc.collect()
+
+        # Ricarica configurazione (potrebbe essere stata modificata)
+        self.config.reload()
+
+        # Ricarica parametri PID
+        self.pid.set_tunings(
+            self.config.thermostat_p,
+            self.config.thermostat_i,
+            self.config.thermostat_d
+        )
+        self.pid.set_setpoint(self.config.thermostat_target)
+
+        print("Returned from setup mode")
+
+    def autotune_pid(self):
+        """
+        Auto-tune PID con focus su NON superare mai il target
+        Misura l'inerzia termica e calcola parametri conservativi
+        """
+        if not self.sensor or not self.tapo:
+            print("Autotune failed: sensor or Tapo not available")
+            return False
+
+        target = self.config.thermostat_target
+        print(f"Starting PID autotune for target: {target}C")
+
+        self.display.fill(0)
+        self.display.text("PID Auto-tune", 15, 10, 1)
+        self.display.text("Phase 1/3", 30, 25, 1)
+        self.display.text("Measuring...", 20, 40, 1)
+        self.display.show()
+
+        # === FASE 1: Misura inerzia termica ===
+        # Riscalda fino a ~70% del target, poi spegni e misura overshoot
+
+        print("Phase 1: Measuring thermal inertia...")
+
+        # Punto di test: 70% del target (o target-20C se target basso)
+        test_point = max(target * 0.7, target - 20)
+
+        # Accendi riscaldamento
+        self.tapo.turn_on()
+        start_temp = self.sensor.read_object_temp()
+
+        # Riscalda fino al test point
+        while True:
+            temp = self.sensor.read_object_temp()
+            if temp is None:
+                continue
+
+            self.display.fill(0)
+            self.display.text("Heating...", 30, 15, 1)
+            self.display.text(f"T: {temp:.1f}C", 30, 30, 1)
+            self.display.text(f"-> {test_point:.0f}C", 30, 45, 1)
+            self.display.show()
+
+            if temp >= test_point:
+                break
+
+            time.sleep(1)
+
+        # Spegni e misura overshoot
+        self.tapo.turn_off()
+        temp_at_shutoff = self.sensor.read_object_temp()
+        time.sleep(2)  # Attendi stabilizzazione lettura
+
+        max_temp = temp_at_shutoff
+        overshoot_time = 0
+
+        # Misura per 60 secondi quanto sale ancora
+        print("Measuring overshoot...")
+        for i in range(60):
+            temp = self.sensor.read_object_temp()
+            if temp is None:
+                continue
+
+            if temp > max_temp:
+                max_temp = temp
+                overshoot_time = i
+
+            self.display.fill(0)
+            self.display.text("Measuring", 30, 15, 1)
+            self.display.text(f"Peak: {max_temp:.1f}C", 20, 30, 1)
+            self.display.text(f"Time: {i}s", 30, 45, 1)
+            self.display.show()
+
+            time.sleep(1)
+
+        overshoot = max_temp - temp_at_shutoff
+        print(f"Overshoot: {overshoot:.1f}C in {overshoot_time}s")
+
+        # === FASE 2: Misura cooling rate ===
+        print("Phase 2: Measuring cooling rate...")
+
+        self.display.fill(0)
+        self.display.text("Phase 2/3", 30, 25, 1)
+        self.display.text("Cooling...", 25, 40, 1)
+        self.display.show()
+
+        # Aspetta che scenda di almeno 10C
+        temp_start_cooling = max_temp
+        time_start = time.ticks_ms()
+
+        while True:
+            temp = self.sensor.read_object_temp()
+            if temp is None:
+                continue
+
+            if temp <= temp_start_cooling - 10:
+                break
+
+            time.sleep(1)
+
+        time_elapsed = time.ticks_diff(time.ticks_ms(), time_start) / 1000.0
+        cooling_rate = 10.0 / time_elapsed  # °C per secondo
+
+        print(f"Cooling rate: {cooling_rate:.3f} C/s")
+
+        # === FASE 3: Calcola parametri PID conservativi ===
+        print("Phase 3: Calculating PID parameters...")
+
+        self.display.fill(0)
+        self.display.text("Phase 3/3", 30, 25, 1)
+        self.display.text("Computing...", 20, 40, 1)
+        self.display.show()
+
+        # Calcola margine di sicurezza
+        # Dobbiamo spegnere PRIMA del target considerando:
+        # 1. L'overshoot misurato
+        # 2. Un margine di sicurezza del 50%
+        safety_margin = overshoot * 1.5
+
+        # Stima del tempo di risposta del sistema
+        # Basato su overshoot_time
+        response_time = max(overshoot_time, 5)  # Minimo 5 secondi
+
+        # Calcola parametri PID conservativi
+        # Kp: proporzionale - deve essere piccolo per evitare overshoot
+        # Più alto l'overshoot, più piccolo deve essere Kp
+        kp = 1.0 / (1 + overshoot)  # Range tipico 0.3-0.8
+
+        # Ki: integrale - lento per stabilità
+        # Deve integrare lentamente per non causare overshoot
+        ki = kp / (response_time * 4)  # Range tipico 0.01-0.05
+
+        # Kd: derivativo - per anticipare e frenare prima del target
+        # Importante per fermare PRIMA considerando l'inerzia
+        kd = kp * response_time / 2  # Range tipico 0.5-2.0
+
+        print(f"Calculated PID: P={kp:.3f}, I={ki:.4f}, D={kd:.3f}")
+        print(f"Safety margin: {safety_margin:.1f}C")
+
+        # Salva parametri
+        self.config.set('thermostat.p', kp)
+        self.config.set('thermostat.i', ki)
+        self.config.set('thermostat.d', kd)
+        self.config.save()
+
+        # Aggiorna PID
+        self.pid.set_tunings(kp, ki, kd)
+
+        # === FASE 4: Test validazione (opzionale ma consigliato) ===
+        print("Phase 4: Validation test...")
+
+        self.display.fill(0)
+        self.display.text("Testing PID", 25, 15, 1)
+        self.display.text("Target test", 25, 30, 1)
+        self.display.show()
+
+        # Reset PID
+        self.pid.reset()
+
+        # Aspetta che la temperatura scenda sotto target - 15C
+        while True:
+            temp = self.sensor.read_object_temp()
+            if temp and temp < target - 15:
+                break
+            time.sleep(2)
+
+        # Test di avvicinamento al target con PID
+        test_duration = 300  # 5 minuti max
+        max_reached = 0
+        target_reached = False
+
+        for i in range(test_duration):
+            temp = self.sensor.read_object_temp()
+            if temp is None:
+                continue
+
+            # Aggiorna PID
+            output = self.pid.update(temp)
+
+            # Controllo conservativo: spegni se vicino al target
+            if temp >= target - safety_margin:
+                self.tapo.turn_off()
+            elif output > 50:
+                self.tapo.turn_on()
+            else:
+                self.tapo.turn_off()
+
+            if temp > max_reached:
+                max_reached = temp
+
+            if abs(temp - target) < 1.0:
+                target_reached = True
+
+            self.display.fill(0)
+            self.display.text("Testing...", 30, 10, 1)
+            self.display.text(f"T: {temp:.1f}C", 25, 25, 1)
+            self.display.text(f"Tgt: {target}C", 25, 40, 1)
+            self.display.text(f"Max: {max_reached:.1f}C", 15, 55, 1)
+            self.display.show()
+
+            # Se raggiunto target e stabile per 30s, esci
+            if target_reached and i > 30:
+                if abs(temp - target) < 1.0:
+                    break
+
+            time.sleep(1)
+
+        # Spegni
+        self.tapo.turn_off()
+
+        # Valuta risultato
+        success = max_reached <= target + 1.0  # Tolleranza 1C
+
+        self.display.fill(0)
+        if success:
+            self.display.text("SUCCESS!", 30, 15, 1)
+            self.display.text(f"Max: {max_reached:.1f}C", 20, 30, 1)
+            self.display.text(f"P={kp:.2f} I={ki:.3f}", 10, 45, 1)
+            print("Autotune completed successfully!")
+        else:
+            self.display.text("WARNING!", 30, 15, 1)
+            self.display.text(f"Overshoot!", 25, 30, 1)
+            self.display.text(f"{max_reached:.1f}>{target}C", 20, 45, 1)
+            print(f"Autotune warning: reached {max_reached:.1f}C")
+
+        self.display.show()
+        time.sleep(5)
+
+        return success
 
     def cleanup(self):
         """Libera risorse"""
