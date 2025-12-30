@@ -48,7 +48,9 @@ class SmartThermo:
             self.show_splash()
 
         # Inizializza pulsante per entrare in setup
-        # Useremo il pulsante FIRE (PIN 0) tenuto premuto all'avvio
+        # Useremo il pulsante RIGHT (PIN 4) tenuto premuto all'avvio
+        self.btn_right = Pin(self.config.PIN_RIGHT, Pin.IN, Pin.PULL_UP)
+        # Fire blocca l'avvio della app
         self.btn_fire = Pin(self.config.PIN_FIRE, Pin.IN, Pin.PULL_UP)
 
     def show_splash(self):
@@ -60,8 +62,8 @@ class SmartThermo:
         time.sleep(1)
 
     def check_setup_mode(self):
-        """Controlla se entrare in modalità setup (pulsante FIRE premuto)"""
-        return self.btn_fire.value() == 0
+        """Controlla se entrare in modalità setup (pulsante RIGHT premuto)"""
+        return self.btn_right.value() == 0
 
     def run_setup(self):
         """Avvia l'app di setup"""
@@ -87,7 +89,8 @@ class SmartThermo:
 
         # Importa e avvia app principale
         import app
-        app.main(self.display, self.i2c)
+        if self.btn_fire.value() != 0:
+            app.main(self.display, self.i2c)
 
         # Cleanup del modulo app per liberare memoria
         del sys.modules['app']
