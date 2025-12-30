@@ -3,29 +3,8 @@
 
 const API_BASE = '';
 
-// DOM Elements
-const elements = {
-    objTemp: document.getElementById('objTemp'),
-    ambTemp: document.getElementById('ambTemp'),
-    refreshBtn: document.getElementById('refreshBtn'),
-    thermostatActive: document.getElementById('thermostatActive'),
-    targetTemp: document.getElementById('targetTemp'),
-    saveThermostatBtn: document.getElementById('saveThermostatBtn'),
-    scanBtn: document.getElementById('scanBtn'),
-    networkList: document.getElementById('networkList'),
-    wifiForm: document.getElementById('wifiForm'),
-    wifiSsid: document.getElementById('wifiSsid'),
-    wifiPassword: document.getElementById('wifiPassword'),
-    testWifiBtn: document.getElementById('testWifiBtn'),
-    saveWifiBtn: document.getElementById('saveWifiBtn'),
-    wifiStatus: document.getElementById('wifiStatus'),
-    configEditor: document.getElementById('configEditor'),
-    loadConfigBtn: document.getElementById('loadConfigBtn'),
-    saveConfigBtn: document.getElementById('saveConfigBtn'),
-    wifiMode: document.getElementById('wifiMode'),
-    ipAddress: document.getElementById('ipAddress'),
-    connectedSsid: document.getElementById('connectedSsid')
-};
+// Variabili globali
+let elements = {};
 
 // === Temperature Functions ===
 
@@ -320,29 +299,70 @@ function showStatus(element, message, type) {
     }, 5000);
 }
 
-// === Event Listeners ===
-
-elements.refreshBtn.addEventListener('click', updateTemperatures);
-elements.saveThermostatBtn.addEventListener('click', saveThermostat);
-elements.scanBtn.addEventListener('click', scanNetworks);
-elements.testWifiBtn.addEventListener('click', testWiFiConnection);
-elements.saveWifiBtn.addEventListener('click', saveWiFiConfig);
-elements.loadConfigBtn.addEventListener('click', loadConfig);
-elements.saveConfigBtn.addEventListener('click', saveConfig);
-
-// === Auto-refresh ===
-
-// Update temperatures every 2 seconds
-setInterval(updateTemperatures, 2000);
-
-// Update status every 10 seconds
-setInterval(updateStatus, 10000);
-
-// === Initial Load ===
+// === Initialization ===
 
 window.addEventListener('DOMContentLoaded', () => {
+    console.log('SmartThermo Web Interface loading...');
+
+    // Initialize DOM elements
+    elements = {
+        objTemp: document.getElementById('objTemp'),
+        ambTemp: document.getElementById('ambTemp'),
+        refreshBtn: document.getElementById('refreshBtn'),
+        thermostatActive: document.getElementById('thermostatActive'),
+        targetTemp: document.getElementById('targetTemp'),
+        saveThermostatBtn: document.getElementById('saveThermostatBtn'),
+        scanBtn: document.getElementById('scanBtn'),
+        networkList: document.getElementById('networkList'),
+        wifiForm: document.getElementById('wifiForm'),
+        wifiSsid: document.getElementById('wifiSsid'),
+        wifiPassword: document.getElementById('wifiPassword'),
+        testWifiBtn: document.getElementById('testWifiBtn'),
+        saveWifiBtn: document.getElementById('saveWifiBtn'),
+        wifiStatus: document.getElementById('wifiStatus'),
+        configEditor: document.getElementById('configEditor'),
+        loadConfigBtn: document.getElementById('loadConfigBtn'),
+        saveConfigBtn: document.getElementById('saveConfigBtn'),
+        wifiMode: document.getElementById('wifiMode'),
+        ipAddress: document.getElementById('ipAddress'),
+        connectedSsid: document.getElementById('connectedSsid')
+    };
+
+    // Verify all elements are loaded
+    let missingElements = [];
+    for (let key in elements) {
+        if (!elements[key]) {
+            missingElements.push(key);
+        }
+    }
+
+    if (missingElements.length > 0) {
+        console.error('Missing DOM elements:', missingElements);
+        return;
+    }
+
+    console.log('All DOM elements loaded successfully');
+
+    // Setup event listeners
+    elements.refreshBtn.addEventListener('click', updateTemperatures);
+    elements.saveThermostatBtn.addEventListener('click', saveThermostat);
+    elements.scanBtn.addEventListener('click', scanNetworks);
+    elements.testWifiBtn.addEventListener('click', testWiFiConnection);
+    elements.saveWifiBtn.addEventListener('click', saveWiFiConfig);
+    elements.loadConfigBtn.addEventListener('click', loadConfig);
+    elements.saveConfigBtn.addEventListener('click', saveConfig);
+
+    console.log('Event listeners attached');
+
+    // Initial data load
     updateTemperatures();
     loadThermostat();
     updateStatus();
     loadConfig();
+
+    // Auto-refresh timers
+    setInterval(updateTemperatures, 2000);
+    setInterval(updateStatus, 10000);
+
+    console.log('SmartThermo Web Interface ready!');
 });
