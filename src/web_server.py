@@ -376,9 +376,13 @@ class WebServer:
             500: 'Internal Server Error'
         }.get(status, 'Unknown')
 
+        # Content-Length in BYTE, non caratteri
+        body_bytes = body.encode('utf-8')
+        content_length = len(body_bytes)
+
         response = f"HTTP/1.1 {status} {status_text}\r\n"
         response += f"Content-Type: {content_type}\r\n"
-        response += f"Content-Length: {len(body)}\r\n"
+        response += f"Content-Length: {content_length}\r\n"
         response += "Connection: close\r\n"
         response += "Access-Control-Allow-Origin: *\r\n"
         response += "\r\n"
@@ -392,10 +396,14 @@ class WebServer:
             with open(f'static/{filename}', 'r') as f:
                 body = f.read()
 
+            # IMPORTANTE: Content-Length deve essere in BYTE, non caratteri!
+            body_bytes = body.encode('utf-8')
+            content_length = len(body_bytes)
+
             # Crea headers separatamente
             headers = "HTTP/1.1 200 OK\r\n"
-            headers += f"Content-Type: {content_type}\r\n"
-            headers += f"Content-Length: {len(body)}\r\n"
+            headers += f"Content-Type: {content_type}; charset=utf-8\r\n"
+            headers += f"Content-Length: {content_length}\r\n"
             headers += "Connection: close\r\n"
             headers += "Access-Control-Allow-Origin: *\r\n"
             headers += "\r\n"
