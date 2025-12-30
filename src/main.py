@@ -85,18 +85,16 @@ class SmartThermo:
         """Avvia l'app principale del termometro"""
         print("Starting main app...")
 
-        # Mostra messaggio temporaneo
-        if self.display:
-            self.display.fill(0)
-            self.display.text("Main App", 30, 20, 1)
-            self.display.text("Not yet", 35, 35, 1)
-            self.display.text("implemented", 20, 45, 1)
-            self.display.show()
+        # Importa e avvia app principale
+        import app
+        app.main(self.display, self.i2c)
 
-        # TODO: Implementare app principale
-        # Per ora loop infinito
-        while True:
-            time.sleep(1)
+        # Cleanup del modulo app per liberare memoria
+        del sys.modules['app']
+        del app
+        gc.collect()
+
+        print("Main app exited")
 
     def run(self):
         """Loop principale"""
