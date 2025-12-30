@@ -35,6 +35,23 @@ class SmartThermo:
         devices = self.i2c.scan()
         print(f"I2C devices found: {[hex(d) for d in devices]}")
 
+        # Inizializza pulsanti per controllo avvio PRIMA di tutto
+        # RIGHT per entrare in setup all'avvio
+        # FIRE per bloccare l'avvio (debug mode)
+        print("Initializing buttons...")
+        self.btn_right = Pin(self.config.PIN_RIGHT, Pin.IN, Pin.PULL_UP)
+        self.btn_fire = Pin(self.config.PIN_FIRE, Pin.IN, Pin.PULL_UP)
+
+        # Breve delay per stabilizzare i pin
+        time.sleep(0.05)
+
+        # Verifica subito se FIRE è premuto
+        if self.btn_fire.value() == 0:
+            print("\n" + "="*40)
+            print("!!! DEBUG MODE DETECTED !!!")
+            print("FIRE button is pressed")
+            print("="*40 + "\n")
+
         # Inizializza display OLED
         try:
             self.display = SSD1306_I2C(128, 64, self.i2c)
@@ -43,23 +60,26 @@ class SmartThermo:
             print(f"Error initializing display: {e}")
             self.display = None
 
-        # Mostra splash screen
+        # Mostra splash screen (dà 1 secondo per premere FIRE)
         if self.display:
             self.show_splash()
-
-        # Inizializza pulsanti per controllo avvio
-        # RIGHT per entrare in setup all'avvio
-        # FIRE per bloccare l'avvio (debug mode)
-        self.btn_right = Pin(self.config.PIN_RIGHT, Pin.IN, Pin.PULL_UP)
-        self.btn_fire = Pin(self.config.PIN_FIRE, Pin.IN, Pin.PULL_UP)
 
     def show_splash(self):
         """Mostra schermata di avvio"""
         self.display.fill(0)
-        self.display.text("SmartThermo", 20, 20, 1)
-        self.display.text("v1.0", 50, 35, 1)
+        self.display.text("SmartThermo", 20, 10, 1)
+        self.display.text("v1.0", 50, 25, 1)
+        self.display.text("Hold FIRE", 28, 45, 1)
+        self.display.text("for Debug", 28, 55, 1)
         self.display.show()
-        time.sleep(1)
+
+        # Sleep più lungo per dare tempo di premere FIRE
+        # Durante questo tempo controlliamo continuamente
+        start = time.ticks_ms()
+        while time.ticks_diff(time.ticks_ms(), start) < 1500:  # 1.5 secondi
+            if self.btn_fire.value() == 0:
+                print("DEBUG: FIRE pressed during splash!")
+            time.sleep(0.1)
 
     def check_setup_mode(self):
         """Controlla se entrare in modalità setup (pulsante RIGHT premuto all'avvio)"""
