@@ -37,6 +37,10 @@ class ThermoApp:
         self.i2c = i2c
         self.config = Config()
 
+        if self.config.bignum_enabled:
+            from bignum import BigNum
+            self.big = BigNum(self.display)
+
         # Stato applicazione
         self.current_mode = self.MODE_READING
         self.running = False
@@ -352,10 +356,7 @@ class ThermoApp:
             # Modalità BigNum: temperatura grande
             if self.object_temp is not None:
                 temp_str = f"{self.object_temp:.1f}C"
-                # Centra il testo (approssimativo)
-                x = max(0, (128 - len(temp_str) * 8) // 2)
-                y = 26  # Centro area (10 + 44/2 - 4)
-                self.display.text(temp_str, x, y, 1)
+                self.big.printNum(temp_str, 0, 12)
             else:
                 self.display.text("--.-C", 40, 26, 1)
         else:
