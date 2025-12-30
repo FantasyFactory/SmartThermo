@@ -1,0 +1,45 @@
+{
+  "pins": {
+    "PIN_SDA": 5,
+    "PIN_SCL": 6,
+    "PIN_LEFT": 3,
+    "PIN_RIGHT": 4,
+    "PIN_FIRE": 0,
+    "PIN_LASER": 9,
+    "PIN_UP": 10,
+    "PIN_DOWN": 7,
+    "PIN_BUZZER": 1
+  },
+  "wifi": {
+    "mode": "AP",
+    "known": [
+      {"ssid": "LabCeramica", "password": "Cucculullu"},
+      {"ssid": "redmi", "password": "cucculullu"}
+    ],
+    "selected": 0,
+    "ap_ip": "192.168.4.1",
+    "ap_credentials": {
+      "ssid": "SmartThermo",
+      "password": "12345678"
+    }
+  },
+  "preferences": {
+    "laser": true,
+    "bignum": false,
+    "reading": "OnShoot",
+    "refresh": 500
+  },
+  "thermostat": {
+    "active": false,
+    "target": 50,
+    "p": 1.0,
+    "i": 0.0,
+    "d": 0.0
+  },
+  "tapo": {
+    "enabled": false,
+    "ip": "192.168.137.242",
+    "email": "corrado.casoni@gmail.com",
+    "password": "CicciBabau12!"
+  }
+}
