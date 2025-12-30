@@ -352,11 +352,10 @@ class ThermoApp:
 
     def _draw_reading_mode(self):
         """Disegna modalità Reading"""
-        if self.config.bignum_enabled:
+        if self.config.bignum_enabled and hasattr(self, 'big'):
             # Modalità BigNum: temperatura grande
             if self.object_temp is not None:
-                temp_str = f"{self.object_temp:.1f}C"
-                self.big.printNum(temp_str, 0, 12)
+                self.big.printNum(self.object_temp, 0, 12)
             else:
                 self.display.text("--.-C", 40, 26, 1)
         else:
