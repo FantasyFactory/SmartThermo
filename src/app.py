@@ -10,6 +10,7 @@ from wifi_manager import WiFiManager
 from web_server import WebServer
 from config import Config
 from pid_controller import PIDController
+from buzzer import Buzzer
 
 
 class ThermoApp:
@@ -105,8 +106,7 @@ class ThermoApp:
 
         # Buzzer
         try:
-            self.buzzer = Pin(self.config.PIN_BUZZER, Pin.OUT)
-            self.buzzer.value(0)
+            self.buzzer = Buzzer(self.config.PIN_BUZZER)
         except:
             self.buzzer = None
 
@@ -171,6 +171,8 @@ class ThermoApp:
                 # Aggiorna letture se necessario
                 if self._should_update_reading(current_time):
                     self._read_temperatures()
+                    if self.config.reading_mode == self.READING_CONTINUE:
+                        self.buzzer.note_on(int(self.object_temp*100))
                     last_display_update = current_time
 
                 # Aggiorna display
@@ -355,7 +357,7 @@ class ThermoApp:
         if self.config.bignum_enabled and hasattr(self, 'big'):
             # Modalità BigNum: temperatura grande
             if self.object_temp is not None:
-                self.big.printNum(self.object_temp, 0, 12)
+                self.big.printNum(self.object_temp, 0, 15)
             else:
                 self.display.text("--.-C", 40, 26, 1)
         else:
@@ -412,8 +414,8 @@ class ThermoApp:
             return
 
         # Area grafico: y da 10 a 54 (44 pixel altezza)
-        graph_height = 44
-        graph_y_start = 10
+        graph_height = 38
+        graph_y_start = 15
 
         # Trova min/max per scalare
         min_temp = min(self.temp_history)
@@ -491,9 +493,7 @@ class ThermoApp:
         """Emette beep breve"""
         if self.buzzer:
             try:
-                self.buzzer.value(1)
-                time.sleep_ms(50)
-                self.buzzer.value(0)
+                self.buzzer.beep(1000,50,75)
             except:
                 pass
 
@@ -514,8 +514,8 @@ class ThermoApp:
 
         # Spegni laser e buzzer
         self.laser.value(0)
-        if self.buzzer:
-            self.buzzer.value(0)
+        #if self.buzzer:
+            #self.buzzer.value(0)
 
         # Ferma web server temporaneamente (mantiene WiFi)
         # Non serve cleanup completo, solo pausa
@@ -787,8 +787,8 @@ class ThermoApp:
             self.laser.value(0)
 
         # Spegni buzzer
-        if self.buzzer:
-            self.buzzer.value(0)
+        #if self.buzzer:
+            #self.buzzer.value(0)
 
         # Ferma web server
         if self.web_server:
