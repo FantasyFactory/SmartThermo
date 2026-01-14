@@ -171,11 +171,8 @@ class ThermoApp:
                 # Aggiorna letture se necessario
                 if self._should_update_reading(current_time):
                     self._read_temperatures()
-                    # Beep proporzionale alla temperatura in modalità Continue
                     if self.config.reading_mode == self.READING_CONTINUE and self.buzzer and self.object_temp is not None:
-                        freq = int(self.object_temp * 10) + 500  # 500-1500 Hz range
-                        freq = max(500, min(freq, 2000))  # Limita range
-                        self.buzzer.beep(freq, 50, volume=30)  # Beep breve
+                        self.buzzer.note_on(int(self.object_temp*100))
                     last_display_update = current_time
 
                 # Aggiorna display
