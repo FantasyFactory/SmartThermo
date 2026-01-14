@@ -85,9 +85,9 @@ class ThermoApp:
 
     def _init_hardware(self):
         """Inizializza hardware (sensore, pulsanti, laser)"""
-        # Sensore MLX90614
+        # Sensore MLX90614 con calibrazione
         try:
-            self.sensor = MLX90614(self.i2c)
+            self.sensor = MLX90614(self.i2c, config=self.config)
             print("Sensor initialized")
         except Exception as e:
             print(f"Error initializing sensor: {e}")

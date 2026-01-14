@@ -14,23 +14,64 @@ MLX90614_TOBJ1 = const(0x07)  # Object temperature
 class MLX90614:
     """Driver per sensore MLX90614"""
 
-    def __init__(self, i2c, addr=MLX90614_I2C_ADDR):
+    def __init__(self, i2c, addr=MLX90614_I2C_ADDR, config=None):
         """
         Inizializza il sensore
 
         Args:
             i2c: istanza I2C
             addr: indirizzo I2C del sensore (default 0x5A)
+            config: istanza Config per calibrazione (opzionale)
         """
         self.i2c = i2c
         self.addr = addr
         self._buf = bytearray(3)
+        self.config = config
+
+        # Calcola coefficienti di calibrazione lineare
+        self._cal_enabled = False
+        self._cal_m = 1.0  # coefficiente angolare
+        self._cal_q = 0.0  # intercetta
+
+        if config and config.calibration_enabled:
+            self._calculate_calibration()
 
         # Verifica che il sensore sia presente
         if addr not in i2c.scan():
             raise OSError(f"MLX90614 not found at address {hex(addr)}")
 
         print(f"MLX90614 initialized at {hex(addr)}")
+        if self._cal_enabled:
+            print(f"Calibration enabled: m={self._cal_m:.4f}, q={self._cal_q:.4f}")
+
+    def _calculate_calibration(self):
+        """
+        Calcola i coefficienti di calibrazione lineare usando due punti
+        Formula: temp_corretta = m * temp_letta + q
+
+        Dove:
+            m = (y2 - y1) / (x2 - x1)  [coefficiente angolare]
+            q = y1 - m * x1             [intercetta]
+        """
+        try:
+            x1 = self.config.calibration_point1_raw   # es. 36.3
+            y1 = self.config.calibration_point1_real  # es. 60.0
+            x2 = self.config.calibration_point2_raw   # es. 58.2
+            y2 = self.config.calibration_point2_real  # es. 100.0
+
+            # Evita divisione per zero
+            if abs(x2 - x1) < 0.1:
+                print("Warning: calibration points too close, using default")
+                return
+
+            # Calcola coefficienti
+            self._cal_m = (y2 - y1) / (x2 - x1)
+            self._cal_q = y1 - self._cal_m * x1
+            self._cal_enabled = True
+
+        except Exception as e:
+            print(f"Error calculating calibration: {e}")
+            self._cal_enabled = False
 
     def _read_temp(self, register):
         """
@@ -54,6 +95,10 @@ class MLX90614:
             # Il valore è in 0.02K per LSB, 0x0000 = -273.15°C
             temp_k = temp_raw * 0.02
             temp_c = temp_k - 273.15
+
+            # Applica calibrazione lineare se abilitata
+            if self._cal_enabled:
+                temp_c = self._cal_m * temp_c + self._cal_q
 
             return round(temp_c, 1)
 
