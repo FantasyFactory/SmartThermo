@@ -96,14 +96,20 @@ class MLX90614:
             temp_k = temp_raw * 0.02
             temp_c = temp_k - 273.15
 
+            # Debug: stampa temperatura prima della calibrazione
+            print(f"Raw temp: {temp_c:.1f}°C")
+
             # Applica calibrazione lineare se abilitata
             if self._cal_enabled:
                 temp_c = self._cal_m * temp_c + self._cal_q
+                print(f"Calibrated temp: {temp_c:.1f}°C")
 
             return round(temp_c, 1)
 
         except Exception as e:
             print(f"Error reading temperature: {e}")
+            import sys
+            sys.print_exception(e)
             return None
 
     def read_ambient_temp(self):
