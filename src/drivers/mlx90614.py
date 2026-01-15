@@ -10,6 +10,10 @@ MLX90614_I2C_ADDR = const(0x5A)
 MLX90614_TA = const(0x06)  # Ambient temperature
 MLX90614_TOBJ1 = const(0x07)  # Object temperature
 
+# Indirizzi EEPROM
+MLX90614_EEPROM_EMISSIVITY = const(0x24)  # Registro emissività (EEPROM)
+MLX90614_EEPROM_CONFIG = const(0x25)  # Config register
+
 
 class MLX90614:
     """Driver per sensore MLX90614"""
@@ -169,3 +173,116 @@ class MLX90614:
         time.sleep_ms(10)
         amb_temp = self.read_ambient_temp()
         return obj_temp, obj_temp_raw, amb_temp
+
+    # === Funzioni per gestione Emissività EEPROM ===
+
+    def _crc8(self, data):
+        """
+        Calcola CRC-8 per comunicazione EEPROM MLX90614
+        Polinomio: 0x07 (x^8 + x^2 + x + 1)
+
+        Args:
+            data: bytes da processare
+
+        Returns:
+            CRC-8 calcolato
+        """
+        crc = 0x00
+        for byte in data:
+            crc ^= byte
+            for _ in range(8):
+                if crc & 0x80:
+                    crc = (crc << 1) ^ 0x07
+                else:
+                    crc = crc << 1
+            crc &= 0xFF
+        return crc
+
+    def read_emissivity(self):
+        """
+        Legge il valore di emissività dalla EEPROM
+
+        Returns:
+            Emissività come float 0.0-1.0, o None se errore
+        """
+        try:
+            # Leggi 3 bytes da EEPROM (2 data + 1 PEC)
+            data = bytearray(3)
+            self.i2c.readfrom_mem_into(self.addr, MLX90614_EEPROM_EMISSIVITY, data)
+
+            # Estrai valore (16 bit little-endian)
+            raw_value = (data[1] << 8) | data[0]
+
+            # Converti in emissività (0x0000 = 0.0, 0xFFFF = 1.0)
+            emissivity = raw_value / 65535.0
+
+            print(f"Emissivity from EEPROM: {emissivity:.4f} (raw: 0x{raw_value:04X})")
+            return emissivity
+
+        except Exception as e:
+            print(f"Error reading emissivity: {e}")
+            return None
+
+    def write_emissivity(self, emissivity):
+        """
+        Scrive un nuovo valore di emissività nella EEPROM
+
+        ATTENZIONE: La EEPROM ha un numero limitato di cicli di scrittura (~100k)
+        Usare con cautela!
+
+        Args:
+            emissivity: valore di emissività 0.0-1.0
+
+        Returns:
+            True se successo, False altrimenti
+        """
+        try:
+            # Validazione input
+            if not (0.0 <= emissivity <= 1.0):
+                print(f"Error: emissivity must be 0.0-1.0, got {emissivity}")
+                return False
+
+            # Converti emissività in valore EEPROM (16 bit)
+            raw_value = int(emissivity * 65535)
+
+            print(f"Writing emissivity {emissivity:.4f} (0x{raw_value:04X}) to EEPROM...")
+
+            # FASE 1: Cancella vecchio valore (write 0x0000)
+            erase_data = bytearray([0x00, 0x00])
+
+            # Calcola CRC per erase (indirizzo + data)
+            crc_data = bytearray([self.addr << 1, MLX90614_EEPROM_EMISSIVITY]) + erase_data
+            crc = self._crc8(crc_data)
+
+            # Scrivi 0x0000 + CRC
+            erase_packet = erase_data + bytearray([crc])
+            self.i2c.writeto_mem(self.addr, MLX90614_EEPROM_EMISSIVITY, erase_packet)
+            time.sleep_ms(10)  # Wait per erase
+
+            # FASE 2: Scrivi nuovo valore
+            write_data = bytearray([raw_value & 0xFF, (raw_value >> 8) & 0xFF])
+
+            # Calcola CRC per write
+            crc_data = bytearray([self.addr << 1, MLX90614_EEPROM_EMISSIVITY]) + write_data
+            crc = self._crc8(crc_data)
+
+            # Scrivi valore + CRC
+            write_packet = write_data + bytearray([crc])
+            self.i2c.writeto_mem(self.addr, MLX90614_EEPROM_EMISSIVITY, write_packet)
+            time.sleep_ms(10)  # Wait per write
+
+            # Verifica scrittura
+            time.sleep_ms(50)  # Attesa extra per stabilizzazione
+            verify = self.read_emissivity()
+            if verify is not None and abs(verify - emissivity) < 0.001:
+                print(f"Emissivity written successfully: {verify:.4f}")
+                return True
+            else:
+                print(f"Verification failed: expected {emissivity:.4f}, got {verify}")
+                return False
+
+        except Exception as e:
+            print(f"Error writing emissivity: {e}")
+            import sys
+            sys.print_exception(e)
+            return False

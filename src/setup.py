@@ -146,12 +146,41 @@ class SetupApp:
             ),
         ]
 
+        # === EMISSIVITY MENU ===
+        emissivity_items = [
+            MenuItem(
+                MenuItem.TYPE_LIST,
+                "Material Type",
+                choices=self._get_emissivity_materials(),
+                get_value=lambda: self.config.emissivity_material_type,
+                set_value=lambda v: self.config.set('emissivity.material_type', v)
+            ),
+            MenuItem(
+                MenuItem.TYPE_FLOAT,
+                "Custom Value",
+                get_value=lambda: self.config.emissivity_custom_value,
+                set_value=lambda v: self.config.set('emissivity.custom_value', v)
+            ),
+            MenuItem(MenuItem.TYPE_LABEL, "---"),
+            MenuItem(
+                MenuItem.TYPE_ACTION,
+                "Read EEPROM",
+                action=lambda: self._read_emissivity_eeprom()
+            ),
+            MenuItem(
+                MenuItem.TYPE_ACTION,
+                "Write to EEPROM",
+                action=lambda: self._write_emissivity_eeprom()
+            ),
+        ]
+
         # === ROOT MENU ===
         root_items = [
             MenuItem(MenuItem.TYPE_LEVEL, "Wifi", items=wifi_items),
             MenuItem(MenuItem.TYPE_LEVEL, "Preferences", items=preferences_items),
             MenuItem(MenuItem.TYPE_LEVEL, "Thermostat", items=thermostat_items),
             MenuItem(MenuItem.TYPE_LEVEL, "Tapo", items=tapo_items),
+            MenuItem(MenuItem.TYPE_LEVEL, "Emissivity", items=emissivity_items),
             MenuItem(
                 MenuItem.TYPE_ACTION,
                 "Calibration",
@@ -361,6 +390,120 @@ class SetupApp:
         del sensor
         import gc
         gc.collect()
+
+    def _get_emissivity_materials(self):
+        """Ottiene la lista dei nomi dei materiali per emissività"""
+        presets = self.config.emissivity_presets
+        return [preset['name'] for preset in presets]
+
+    def _read_emissivity_eeprom(self):
+        """Legge il valore di emissività dalla EEPROM e lo mostra"""
+        import time
+
+        if not self.i2c:
+            self.display.fill(0)
+            self.display.text("I2C not", 0, 10, 1)
+            self.display.text("available", 0, 25, 1)
+            self.display.show()
+            time.sleep(2)
+            return
+
+        # Inizializza sensore temporaneamente
+        from drivers.mlx90614 import MLX90614
+        try:
+            sensor = MLX90614(self.i2c, config=self.config)
+            emissivity = sensor.read_emissivity()
+
+            self.display.fill(0)
+            self.display.text("EEPROM Value:", 0, 10, 1)
+            if emissivity is not None:
+                self.display.text(f"e = {emissivity:.4f}", 0, 25, 1)
+                self.display.text(f"({emissivity*100:.1f}%)", 0, 40, 1)
+            else:
+                self.display.text("Read Error!", 0, 25, 1)
+            self.display.show()
+            time.sleep(3)
+
+            del sensor
+        except Exception as e:
+            self.display.fill(0)
+            self.display.text("Sensor error", 0, 10, 1)
+            self.display.text(str(e)[:16], 0, 25, 1)
+            self.display.show()
+            time.sleep(2)
+
+    def _write_emissivity_eeprom(self):
+        """Scrive il valore di emissività selezionato sulla EEPROM"""
+        import time
+        from machine import Pin
+
+        if not self.i2c:
+            self.display.fill(0)
+            self.display.text("I2C not", 0, 10, 1)
+            self.display.text("available", 0, 25, 1)
+            self.display.show()
+            time.sleep(2)
+            return
+
+        # Ottieni valore da scrivere
+        emissivity = self.config.emissivity_value
+
+        # Conferma
+        self.display.fill(0)
+        self.display.text("Write EEPROM?", 0, 0, 1)
+        self.display.text(f"e = {emissivity:.4f}", 0, 15, 1)
+        self.display.text("WARNING:", 0, 30, 1)
+        self.display.text("Max ~100k write", 0, 40, 1)
+        self.display.text("FIRE=Yes L=No", 0, 55, 1)
+        self.display.show()
+
+        # Aspetta conferma
+        btn_fire = Pin(self.config.PIN_FIRE, Pin.IN, Pin.PULL_UP)
+        btn_left = Pin(self.config.PIN_LEFT, Pin.IN, Pin.PULL_UP)
+
+        confirmed = False
+        for _ in range(100):  # Timeout 10 sec
+            if btn_fire.value() == 0:
+                confirmed = True
+                break
+            if btn_left.value() == 0:
+                break
+            time.sleep(0.1)
+
+        if not confirmed:
+            self.display.fill(0)
+            self.display.text("Cancelled", 0, 25, 1)
+            self.display.show()
+            time.sleep(1)
+            return
+
+        # Scrivi su EEPROM
+        from drivers.mlx90614 import MLX90614
+        try:
+            sensor = MLX90614(self.i2c, config=self.config)
+
+            self.display.fill(0)
+            self.display.text("Writing...", 0, 15, 1)
+            self.display.show()
+
+            success = sensor.write_emissivity(emissivity)
+
+            self.display.fill(0)
+            if success:
+                self.display.text("Success!", 0, 15, 1)
+                self.display.text(f"e = {emissivity:.4f}", 0, 30, 1)
+            else:
+                self.display.text("Write Failed!", 0, 20, 1)
+            self.display.show()
+            time.sleep(2)
+
+            del sensor
+        except Exception as e:
+            self.display.fill(0)
+            self.display.text("Error!", 0, 15, 1)
+            self.display.text(str(e)[:16], 0, 30, 1)
+            self.display.show()
+            time.sleep(2)
 
     def _save_and_exit(self):
         """Salva la configurazione ed esce"""
