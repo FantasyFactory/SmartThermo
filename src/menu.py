@@ -136,36 +136,40 @@ class Menu:
 
         if self.editing:
             # Modalità editing: incrementa valore
-            if current_item.type == MenuItem.TYPE_INT:
-                val = current_item.get_current_value()
-                val = min(val + current_item.step, current_item.max_val)
-                current_item.set_current_value(val)
-                return True
-            elif current_item.type == MenuItem.TYPE_FLOAT:
-                val = current_item.get_current_value()
-                val = min(val + current_item.step, current_item.max_val)
-                current_item.set_current_value(val)
-                return True
-            elif current_item.type == MenuItem.TYPE_BOOL:
-                current_item.set_current_value(True)
-                return True
-            elif current_item.type == MenuItem.TYPE_LIST:
-                choices = current_item.choices
-                val = current_item.get_current_value()
-                try:
-                    idx = choices.index(val)
-                    idx = (idx - 1) % len(choices)
-                    current_item.set_current_value(choices[idx])
-                except ValueError:
-                    current_item.set_current_value(choices[0] if choices else None)
-                return True
-            elif current_item.type == MenuItem.TYPE_IP:
-                # Incrementa la cifra corrente dell'IP
-                ip = current_item.get_current_value()
-                octets = [int(x) for x in ip.split('.')]
-                octets[self.edit_index] = min(octets[self.edit_index] + 1, 255)
-                current_item.set_current_value('.'.join(map(str, octets)))
-                return True
+            try:
+                if current_item.type == MenuItem.TYPE_INT:
+                    val = current_item.get_current_value()
+                    val = min(val + current_item.step, current_item.max_val)
+                    current_item.set_current_value(val)
+                    return True
+                elif current_item.type == MenuItem.TYPE_FLOAT:
+                    val = current_item.get_current_value()
+                    val = min(val + current_item.step, current_item.max_val)
+                    current_item.set_current_value(val)
+                    return True
+                elif current_item.type == MenuItem.TYPE_BOOL:
+                    current_item.set_current_value(True)
+                    return True
+                elif current_item.type == MenuItem.TYPE_LIST:
+                    choices = current_item.choices
+                    val = current_item.get_current_value()
+                    try:
+                        idx = choices.index(val)
+                        idx = (idx - 1) % len(choices)
+                        current_item.set_current_value(choices[idx])
+                    except ValueError:
+                        current_item.set_current_value(choices[0] if choices else None)
+                    return True
+                elif current_item.type == MenuItem.TYPE_IP:
+                    # Incrementa la cifra corrente dell'IP
+                    ip = current_item.get_current_value()
+                    octets = [int(x) for x in ip.split('.')]
+                    octets[self.edit_index] = min(octets[self.edit_index] + 1, 255)
+                    current_item.set_current_value('.'.join(map(str, octets)))
+                    return True
+            except Exception as e:
+                print(f"Error in _handle_up: {e}")
+                return False
         else:
             # Modalità navigazione: scorre su
             if self.current_index > 0:
@@ -182,36 +186,40 @@ class Menu:
 
         if self.editing:
             # Modalità editing: decrementa valore
-            if current_item.type == MenuItem.TYPE_INT:
-                val = current_item.get_current_value()
-                val = max(val - current_item.step, current_item.min_val)
-                current_item.set_current_value(val)
-                return True
-            elif current_item.type == MenuItem.TYPE_FLOAT:
-                val = current_item.get_current_value()
-                val = max(val - current_item.step, current_item.min_val)
-                current_item.set_current_value(val)
-                return True
-            elif current_item.type == MenuItem.TYPE_BOOL:
-                current_item.set_current_value(False)
-                return True
-            elif current_item.type == MenuItem.TYPE_LIST:
-                choices = current_item.choices
-                val = current_item.get_current_value()
-                try:
-                    idx = choices.index(val)
-                    idx = (idx + 1) % len(choices)
-                    current_item.set_current_value(choices[idx])
-                except ValueError:
-                    current_item.set_current_value(choices[0] if choices else None)
-                return True
-            elif current_item.type == MenuItem.TYPE_IP:
-                # Decrementa la cifra corrente dell'IP
-                ip = current_item.get_current_value()
-                octets = [int(x) for x in ip.split('.')]
-                octets[self.edit_index] = max(octets[self.edit_index] - 1, 0)
-                current_item.set_current_value('.'.join(map(str, octets)))
-                return True
+            try:
+                if current_item.type == MenuItem.TYPE_INT:
+                    val = current_item.get_current_value()
+                    val = max(val - current_item.step, current_item.min_val)
+                    current_item.set_current_value(val)
+                    return True
+                elif current_item.type == MenuItem.TYPE_FLOAT:
+                    val = current_item.get_current_value()
+                    val = max(val - current_item.step, current_item.min_val)
+                    current_item.set_current_value(val)
+                    return True
+                elif current_item.type == MenuItem.TYPE_BOOL:
+                    current_item.set_current_value(False)
+                    return True
+                elif current_item.type == MenuItem.TYPE_LIST:
+                    choices = current_item.choices
+                    val = current_item.get_current_value()
+                    try:
+                        idx = choices.index(val)
+                        idx = (idx + 1) % len(choices)
+                        current_item.set_current_value(choices[idx])
+                    except ValueError:
+                        current_item.set_current_value(choices[0] if choices else None)
+                    return True
+                elif current_item.type == MenuItem.TYPE_IP:
+                    # Decrementa la cifra corrente dell'IP
+                    ip = current_item.get_current_value()
+                    octets = [int(x) for x in ip.split('.')]
+                    octets[self.edit_index] = max(octets[self.edit_index] - 1, 0)
+                    current_item.set_current_value('.'.join(map(str, octets)))
+                    return True
+            except Exception as e:
+                print(f"Error in _handle_down: {e}")
+                return False
         else:
             # Modalità navigazione: scorre giù
             if self.current_index < len(self.current_items) - 1:
@@ -296,30 +304,35 @@ class Menu:
             text = f"{prefix}{item.label}"
 
             # Aggiunge il valore per i tipi editabili
-            if item.type == MenuItem.TYPE_BOOL:
-                val = item.get_current_value()
-                text += f": {'ON' if val else 'OFF'}"
-            elif item.type == MenuItem.TYPE_INT:
-                val = item.get_current_value()
-                text += f": {val}"
-            elif item.type == MenuItem.TYPE_FLOAT:
-                val = item.get_current_value()
-                text += f": {val:.2f}"
-            elif item.type == MenuItem.TYPE_LIST:
-                val = item.get_current_value()
-                text += f": {val}"
-            elif item.type == MenuItem.TYPE_IP:
-                val = item.get_current_value()
-                if self.editing and i == self.current_index:
-                    # Evidenzia la cifra in editing
-                    octets = val.split('.')
-                    highlighted = octets[self.edit_index]
-                    octets[self.edit_index] = f"[{highlighted}]"
-                    text += f": {'.'.join(octets)}"
-                else:
+            try:
+                if item.type == MenuItem.TYPE_BOOL:
+                    val = item.get_current_value()
+                    text += f": {'ON' if val else 'OFF'}"
+                elif item.type == MenuItem.TYPE_INT:
+                    val = item.get_current_value()
                     text += f": {val}"
-            elif item.type == MenuItem.TYPE_LEVEL:
-                text += " >"
+                elif item.type == MenuItem.TYPE_FLOAT:
+                    val = item.get_current_value()
+                    text += f": {val:.2f}"
+                elif item.type == MenuItem.TYPE_LIST:
+                    val = item.get_current_value()
+                    text += f": {val}"
+                elif item.type == MenuItem.TYPE_IP:
+                    val = item.get_current_value()
+                    if self.editing and i == self.current_index:
+                        # Evidenzia la cifra in editing
+                        octets = val.split('.')
+                        highlighted = octets[self.edit_index]
+                        octets[self.edit_index] = f"[{highlighted}]"
+                        text += f": {'.'.join(octets)}"
+                    else:
+                        text += f": {val}"
+                elif item.type == MenuItem.TYPE_LEVEL:
+                    text += " >"
+            except Exception as e:
+                # Se c'è un errore nel recupero del valore, mostra l'errore
+                text += ": ERR"
+                print(f"Menu render error for {item.label}: {e}")
 
             # Indicatore di editing
             if self.editing and i == self.current_index and item.type != MenuItem.TYPE_IP:

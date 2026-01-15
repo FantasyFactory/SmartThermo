@@ -281,7 +281,7 @@ class Config:
     @property
     def emissivity_material_type(self):
         """Tipo di materiale selezionato per emissività"""
-        return self.get('emissivity.material_type', 'KNSB/Polimeri')
+        return self.get('emissivity.material_type', 'KNSB')
 
     @emissivity_material_type.setter
     def emissivity_material_type(self, value):
@@ -300,12 +300,12 @@ class Config:
     def emissivity_presets(self):
         """Lista di preset emissività disponibili"""
         return self.get('emissivity.presets', [
-            {"name": "Pelle Umana", "value": 0.98},
-            {"name": "Plastica Nera", "value": 0.95},
-            {"name": "KNSB/Polimeri", "value": 0.90},
-            {"name": "Ceramica Opaca", "value": 0.92},
-            {"name": "Metalli Opachi", "value": 0.70},
-            {"name": "Metalli Lucidi", "value": 0.20},
+            {"name": "Skin", "value": 0.98},
+            {"name": "Plastic", "value": 0.95},
+            {"name": "KNSB", "value": 0.90},
+            {"name": "Ceramic", "value": 0.92},
+            {"name": "M.Matt", "value": 0.70},
+            {"name": "M.Shiny", "value": 0.20},
             {"name": "Custom", "value": 0.90}
         ])
 
@@ -378,15 +378,15 @@ class Config:
                 "point2_real": 100.0
             },
             "emissivity": {
-                "material_type": "KNSB/Polimeri",
+                "material_type": "KNSB",
                 "custom_value": 0.90,
                 "presets": [
-                    {"name": "Pelle Umana", "value": 0.98},
-                    {"name": "Plastica Nera", "value": 0.95},
-                    {"name": "KNSB/Polimeri", "value": 0.90},
-                    {"name": "Ceramica Opaca", "value": 0.92},
-                    {"name": "Metalli Opachi", "value": 0.70},
-                    {"name": "Metalli Lucidi", "value": 0.20},
+                    {"name": "Skin", "value": 0.98},
+                    {"name": "Plastic", "value": 0.95},
+                    {"name": "KNSB", "value": 0.90},
+                    {"name": "Ceramic", "value": 0.92},
+                    {"name": "M.Matt", "value": 0.70},
+                    {"name": "M.Shiny", "value": 0.20},
                     {"name": "Custom", "value": 0.90}
                 ]
             }

@@ -64,7 +64,7 @@ class SetupApp:
             MenuItem(
                 MenuItem.TYPE_LIST,
                 "Reading",
-                choices=["OnShoot", "Continue"],
+                choices=["OnShoot", "Cont"],
                 get_value=lambda: self.config.reading_mode,
                 set_value=lambda v: self.config.set('preferences.reading', v)
             ),
@@ -125,7 +125,7 @@ class SetupApp:
             ),
             MenuItem(
                 MenuItem.TYPE_ACTION,
-                "Auto tune PID",
+                "Tune PID",
                 action=lambda: self._autotune_pid()
             ),
         ]
@@ -150,14 +150,17 @@ class SetupApp:
         emissivity_items = [
             MenuItem(
                 MenuItem.TYPE_LIST,
-                "Material Type",
+                "Material",
                 choices=self._get_emissivity_materials(),
                 get_value=lambda: self.config.emissivity_material_type,
                 set_value=lambda v: self.config.set('emissivity.material_type', v)
             ),
             MenuItem(
                 MenuItem.TYPE_FLOAT,
-                "Custom Value",
+                "Custom",
+                min_val=0.1,
+                max_val=1.0,
+                step=0.01,
                 get_value=lambda: self.config.emissivity_custom_value,
                 set_value=lambda v: self.config.set('emissivity.custom_value', v)
             ),
@@ -169,7 +172,7 @@ class SetupApp:
             ),
             MenuItem(
                 MenuItem.TYPE_ACTION,
-                "Write to EEPROM",
+                "Write EEPROM",
                 action=lambda: self._write_emissivity_eeprom()
             ),
         ]
@@ -177,19 +180,19 @@ class SetupApp:
         # === ROOT MENU ===
         root_items = [
             MenuItem(MenuItem.TYPE_LEVEL, "Wifi", items=wifi_items),
-            MenuItem(MenuItem.TYPE_LEVEL, "Preferences", items=preferences_items),
+            MenuItem(MenuItem.TYPE_LEVEL, "Prefs", items=preferences_items),
             MenuItem(MenuItem.TYPE_LEVEL, "Thermostat", items=thermostat_items),
             MenuItem(MenuItem.TYPE_LEVEL, "Tapo", items=tapo_items),
-            MenuItem(MenuItem.TYPE_LEVEL, "Emissivity", items=emissivity_items),
+            MenuItem(MenuItem.TYPE_LEVEL, "Emissiv", items=emissivity_items),
             MenuItem(
                 MenuItem.TYPE_ACTION,
-                "Calibration",
+                "Calibr",
                 action=lambda: self._calibration_menu()
             ),
             MenuItem(MenuItem.TYPE_LABEL, "---"),
             MenuItem(
                 MenuItem.TYPE_ACTION,
-                "Save and Exit",
+                "Save & Exit",
                 action=lambda: self._save_and_exit()
             ),
             MenuItem(
