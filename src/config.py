@@ -276,6 +276,57 @@ class Config:
     def calibration_point2_real(self, value):
         self.set('calibration.point2_real', value)
 
+    # === Emissivity ===
+
+    @property
+    def emissivity_material_type(self):
+        """Tipo di materiale selezionato per emissività"""
+        return self.get('emissivity.material_type', 'KNSB/Polimeri')
+
+    @emissivity_material_type.setter
+    def emissivity_material_type(self, value):
+        self.set('emissivity.material_type', value)
+
+    @property
+    def emissivity_custom_value(self):
+        """Valore custom di emissività"""
+        return self.get('emissivity.custom_value', 0.90)
+
+    @emissivity_custom_value.setter
+    def emissivity_custom_value(self, value):
+        self.set('emissivity.custom_value', value)
+
+    @property
+    def emissivity_presets(self):
+        """Lista di preset emissività disponibili"""
+        return self.get('emissivity.presets', [
+            {"name": "Pelle Umana", "value": 0.98},
+            {"name": "Plastica Nera", "value": 0.95},
+            {"name": "KNSB/Polimeri", "value": 0.90},
+            {"name": "Ceramica Opaca", "value": 0.92},
+            {"name": "Metalli Opachi", "value": 0.70},
+            {"name": "Metalli Lucidi", "value": 0.20},
+            {"name": "Custom", "value": 0.90}
+        ])
+
+    @property
+    def emissivity_value(self):
+        """
+        Restituisce il valore di emissività da usare in base al materiale selezionato
+        Se "Custom" usa custom_value, altrimenti cerca nel preset
+        """
+        material = self.emissivity_material_type
+        if material == "Custom":
+            return self.emissivity_custom_value
+
+        # Cerca nel preset
+        for preset in self.emissivity_presets:
+            if preset['name'] == material:
+                return preset['value']
+
+        # Fallback
+        return 0.90
+
     def _get_default_config(self):
         """Configurazione di default se il file non esiste"""
         return {
@@ -325,6 +376,19 @@ class Config:
                 "point1_real": 60.0,
                 "point2_raw": 58.2,
                 "point2_real": 100.0
+            },
+            "emissivity": {
+                "material_type": "KNSB/Polimeri",
+                "custom_value": 0.90,
+                "presets": [
+                    {"name": "Pelle Umana", "value": 0.98},
+                    {"name": "Plastica Nera", "value": 0.95},
+                    {"name": "KNSB/Polimeri", "value": 0.90},
+                    {"name": "Ceramica Opaca", "value": 0.92},
+                    {"name": "Metalli Opachi", "value": 0.70},
+                    {"name": "Metalli Lucidi", "value": 0.20},
+                    {"name": "Custom", "value": 0.90}
+                ]
             }
         }
 
