@@ -126,13 +126,27 @@ class MLX90614:
         Legge la temperatura dell'oggetto misurato
 
         Returns:
-            Temperatura in °C o None se errore
+            Temperatura calibrata in °C o None se errore
         """
         return self._read_temp(MLX90614_TOBJ1)
 
+    def read_object_temp_raw(self):
+        """
+        Legge la temperatura RAW (non calibrata) dell'oggetto
+
+        Returns:
+            Temperatura raw in °C o None se errore
+        """
+        # Temporaneamente disabilita calibrazione
+        cal_enabled = self._cal_enabled
+        self._cal_enabled = False
+        temp = self._read_temp(MLX90614_TOBJ1)
+        self._cal_enabled = cal_enabled
+        return temp
+
     def read_both(self):
         """
-        Legge entrambe le temperature
+        Legge entrambe le temperature (calibrata e ambiente)
 
         Returns:
             Tupla (object_temp, ambient_temp) o (None, None) se errore
@@ -141,3 +155,17 @@ class MLX90614:
         time.sleep_ms(10)  # Piccola pausa tra le letture
         amb_temp = self.read_ambient_temp()
         return obj_temp, amb_temp
+
+    def read_all(self):
+        """
+        Legge tutte le temperature: calibrata, raw, ambiente
+
+        Returns:
+            Tupla (object_temp_calibrated, object_temp_raw, ambient_temp)
+        """
+        obj_temp = self.read_object_temp()
+        time.sleep_ms(10)
+        obj_temp_raw = self.read_object_temp_raw()
+        time.sleep_ms(10)
+        amb_temp = self.read_ambient_temp()
+        return obj_temp, obj_temp_raw, amb_temp

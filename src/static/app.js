@@ -10,22 +10,27 @@ let elements = {};
 
 async function updateTemperatures() {
     try {
-        const [objResp, ambResp] = await Promise.all([
+        const [objResp, rawResp, ambResp] = await Promise.all([
             fetch(`${API_BASE}/api/temp`),
+            fetch(`${API_BASE}/api/temp_raw`),
             fetch(`${API_BASE}/api/ambient`)
         ]);
 
         const objData = await objResp.json();
+        const rawData = await rawResp.json();
         const ambData = await ambResp.json();
 
         elements.objTemp.textContent = objData.temperature !== null ?
             objData.temperature.toFixed(1) : '--.-';
+        elements.rawTemp.textContent = rawData.temperature !== null ?
+            rawData.temperature.toFixed(1) : '--.-';
         elements.ambTemp.textContent = ambData.temperature !== null ?
             ambData.temperature.toFixed(1) : '--.-';
 
     } catch (error) {
         console.error('Error fetching temperatures:', error);
         elements.objTemp.textContent = 'ERR';
+        elements.rawTemp.textContent = 'ERR';
         elements.ambTemp.textContent = 'ERR';
     }
 }
@@ -307,6 +312,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Initialize DOM elements
     elements = {
         objTemp: document.getElementById('objTemp'),
+        rawTemp: document.getElementById('rawTemp'),
         ambTemp: document.getElementById('ambTemp'),
         refreshBtn: document.getElementById('refreshBtn'),
         thermostatActive: document.getElementById('thermostatActive'),

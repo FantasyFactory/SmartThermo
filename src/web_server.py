@@ -194,6 +194,9 @@ class WebServer:
         if path == '/api/temp':
             return self._api_temp()
 
+        elif path == '/api/temp_raw':
+            return self._api_temp_raw()
+
         elif path == '/api/ambient':
             return self._api_ambient()
 
@@ -239,8 +242,16 @@ class WebServer:
     # === API Handlers ===
 
     def _api_temp(self):
-        """GET /api/temp - Legge temperatura oggetto"""
+        """GET /api/temp - Legge temperatura oggetto (calibrata)"""
         temp = self.sensor.read_object_temp()
+        if temp is not None:
+            return self._json_response({'temperature': temp, 'unit': 'C'})
+        else:
+            return self._json_response({'error': 'Sensor error'}, status=500)
+
+    def _api_temp_raw(self):
+        """GET /api/temp_raw - Legge temperatura oggetto raw (non calibrata)"""
+        temp = self.sensor.read_object_temp_raw()
         if temp is not None:
             return self._json_response({'temperature': temp, 'unit': 'C'})
         else:

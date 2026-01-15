@@ -47,7 +47,8 @@ class ThermoApp:
         self.running = False
 
         # Stato temperature
-        self.object_temp = None
+        self.object_temp = None  # Temperatura calibrata
+        self.object_temp_raw = None  # Temperatura raw (non calibrata)
         self.ambient_temp = None
         self.last_reading_time = 0
 
@@ -67,6 +68,7 @@ class ThermoApp:
         # Inizializza web server
         self.app_state = {
             'object_temp': None,
+            'object_temp_raw': None,
             'ambient_temp': None,
             'last_reading': 0
         }
@@ -283,9 +285,10 @@ class ThermoApp:
         if not self.sensor:
             return
 
-        obj_temp, amb_temp = self.sensor.read_both()
+        obj_temp, obj_temp_raw, amb_temp = self.sensor.read_all()
 
         self.object_temp = obj_temp
+        self.object_temp_raw = obj_temp_raw
         self.ambient_temp = amb_temp
         self.last_reading_time = time.ticks_ms()
 
@@ -298,6 +301,7 @@ class ThermoApp:
     def _update_web_state(self):
         """Aggiorna stato per web server"""
         self.app_state['object_temp'] = self.object_temp
+        self.app_state['object_temp_raw'] = self.object_temp_raw
         self.app_state['ambient_temp'] = self.ambient_temp
         self.app_state['last_reading'] = self.last_reading_time
 
