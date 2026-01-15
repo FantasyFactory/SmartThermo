@@ -95,7 +95,7 @@ class SmartThermo:
 
         # Importa e avvia setup
         import setup
-        setup.main(self.display)
+        setup.main(self.display, self.i2c)
 
         # Cleanup del modulo setup per liberare memoria
         del sys.modules['setup']

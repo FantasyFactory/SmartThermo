@@ -10,15 +10,17 @@ from config import Config
 class SetupApp:
     """Applicazione di setup/configurazione"""
 
-    def __init__(self, display, autotune_callback=None):
+    def __init__(self, display, i2c=None, autotune_callback=None):
         """
         Inizializza l'app di setup
 
         Args:
             display: istanza del display OLED già inizializzato
+            i2c: istanza I2C per sensore (opzionale, per calibrazione)
             autotune_callback: callback per auto-tune PID (opzionale)
         """
         self.display = display
+        self.i2c = i2c
         self.config = Config()
         self.menu = None
         self.exit_requested = False
@@ -150,6 +152,11 @@ class SetupApp:
             MenuItem(MenuItem.TYPE_LEVEL, "Preferences", items=preferences_items),
             MenuItem(MenuItem.TYPE_LEVEL, "Thermostat", items=thermostat_items),
             MenuItem(MenuItem.TYPE_LEVEL, "Tapo", items=tapo_items),
+            MenuItem(
+                MenuItem.TYPE_ACTION,
+                "Calibration",
+                action=lambda: self._calibration_menu()
+            ),
             MenuItem(MenuItem.TYPE_LABEL, "---"),
             MenuItem(
                 MenuItem.TYPE_ACTION,
@@ -200,6 +207,151 @@ class SetupApp:
             self.display.show()
             import time
             time.sleep(2)
+
+    def _calibration_menu(self):
+        """Menu interattivo per calibrazione sensore"""
+        from machine import Pin
+        import time
+
+        # Controlla se i2c è disponibile
+        if not self.i2c:
+            self.display.fill(0)
+            self.display.text("I2C not", 0, 0, 1)
+            self.display.text("available", 0, 12, 1)
+            self.display.show()
+            time.sleep(2)
+            return
+
+        # Inizializza sensore temporaneamente
+        from drivers.mlx90614 import MLX90614
+        try:
+            sensor = MLX90614(self.i2c, config=self.config)
+        except Exception as e:
+            self.display.fill(0)
+            self.display.text("Sensor error", 0, 0, 1)
+            self.display.text(str(e)[:16], 0, 12, 1)
+            self.display.show()
+            time.sleep(2)
+            return
+
+        # Init pulsanti
+        btn_up = Pin(self.config.PIN_UP, Pin.IN, Pin.PULL_UP)
+        btn_down = Pin(self.config.PIN_DOWN, Pin.IN, Pin.PULL_UP)
+        btn_left = Pin(self.config.PIN_LEFT, Pin.IN, Pin.PULL_UP)
+        btn_right = Pin(self.config.PIN_RIGHT, Pin.IN, Pin.PULL_UP)
+        btn_fire = Pin(self.config.PIN_FIRE, Pin.IN, Pin.PULL_UP)
+
+        # Stato calibrazione - carica valori correnti
+        cal_points = [
+            {'raw': self.config.calibration_point1_raw, 'real': self.config.calibration_point1_real},
+            {'raw': self.config.calibration_point2_raw, 'real': self.config.calibration_point2_real},
+        ]
+
+        selected_row = 0  # 0-1 per punti calibrazione, 2 per Update
+        editing = False
+        edit_value = 0
+        last_button_time = 0
+        debounce = 200  # ms
+
+        def read_button(btn):
+            nonlocal last_button_time
+            if btn.value() == 0:
+                now = time.ticks_ms()
+                if time.ticks_diff(now, last_button_time) > debounce:
+                    last_button_time = now
+                    return True
+            return False
+
+        def draw_screen():
+            self.display.fill(0)
+
+            # Header
+            self.display.text("RAW   -  Real", 0, 0, 1)
+
+            # Punti di calibrazione
+            for i, point in enumerate(cal_points):
+                y = 12 + i * 12
+                cursor = ">" if selected_row == i else " "
+                if editing and selected_row == i:
+                    # Evidenzia valore in edit
+                    text = f"{cursor}{point['raw']:5.1f} >[{edit_value:5.1f}]"
+                else:
+                    text = f"{cursor}{point['raw']:5.1f}  {point['real']:6.1f}"
+                self.display.text(text[:16], 0, y, 1)
+
+            # Riga Update
+            y = 12 + len(cal_points) * 12
+            cursor = ">" if selected_row == len(cal_points) else " "
+            self.display.text(f"{cursor}Update", 0, y, 1)
+
+            # Footer hint
+            if editing:
+                self.display.text("UP/DN:chg R:ok", 0, 56, 1)
+            else:
+                self.display.text("F:read L:edit", 0, 56, 1)
+
+            self.display.show()
+
+        # Loop principale menu calibrazione
+        running = True
+        while running:
+            draw_screen()
+
+            if editing:
+                # Modalità editing valore Real
+                if read_button(btn_up):
+                    edit_value += 1
+                    edit_value = min(edit_value, 500)
+                elif read_button(btn_down):
+                    edit_value -= 1
+                    edit_value = max(edit_value, 0)
+                elif read_button(btn_right):
+                    # Conferma edit
+                    cal_points[selected_row]['real'] = edit_value
+                    editing = False
+
+            else:
+                # Modalità selezione riga
+                if read_button(btn_up):
+                    selected_row = (selected_row - 1) % (len(cal_points) + 1)
+                elif read_button(btn_down):
+                    selected_row = (selected_row + 1) % (len(cal_points) + 1)
+                elif read_button(btn_fire):
+                    # Leggi temperatura e scrivi in RAW
+                    if selected_row < len(cal_points):
+                        temp_raw = sensor.read_object_temp_raw()
+                        if temp_raw is not None:
+                            cal_points[selected_row]['raw'] = temp_raw
+                elif read_button(btn_left):
+                    if selected_row < len(cal_points):
+                        # Entra in edit mode
+                        edit_value = cal_points[selected_row]['real']
+                        editing = True
+                    else:
+                        # Esci dal menu
+                        running = False
+                elif read_button(btn_right):
+                    if selected_row == len(cal_points):
+                        # Update: salva calibrazione
+                        self.config.set('calibration.point1_raw', cal_points[0]['raw'])
+                        self.config.set('calibration.point1_real', cal_points[0]['real'])
+                        self.config.set('calibration.point2_raw', cal_points[1]['raw'])
+                        self.config.set('calibration.point2_real', cal_points[1]['real'])
+
+                        # Mostra conferma
+                        self.display.fill(0)
+                        self.display.text("Calibration", 0, 20, 1)
+                        self.display.text("Updated!", 0, 32, 1)
+                        self.display.show()
+                        time.sleep(1)
+                        running = False
+
+            time.sleep(0.05)
+
+        # Cleanup sensore
+        del sensor
+        import gc
+        gc.collect()
 
     def _save_and_exit(self):
         """Salva la configurazione ed esce"""
@@ -266,9 +418,9 @@ class SetupApp:
         print("Setup app cleaned up")
 
 
-def main(display, autotune_callback=None):
+def main(display, i2c=None, autotune_callback=None):
     """Entry point per l'app setup"""
-    app = SetupApp(display, autotune_callback)
+    app = SetupApp(display, i2c, autotune_callback)
     app.run()
     del app
     gc.collect()
