@@ -242,12 +242,13 @@ class SetupApp:
         btn_fire = Pin(self.config.PIN_FIRE, Pin.IN, Pin.PULL_UP)
 
         # Stato calibrazione - carica valori correnti
+        cal_enabled = self.config.calibration_enabled
         cal_points = [
             {'raw': self.config.calibration_point1_raw, 'real': self.config.calibration_point1_real},
             {'raw': self.config.calibration_point2_raw, 'real': self.config.calibration_point2_real},
         ]
 
-        selected_row = 0  # 0-1 per punti calibrazione, 2 per Update
+        selected_row = 0  # 0=Enable, 1-2=punti, 3=Update
         editing = False
         edit_value = 0
         last_button_time = 0
@@ -263,37 +264,41 @@ class SetupApp:
             return False
 
         def draw_screen():
+            nonlocal cal_enabled
             self.display.fill(0)
 
-            # Header
-            self.display.text("RAW   -  Real", 0, 0, 1)
+            # Riga Enable
+            cursor = ">" if selected_row == 0 else " "
+            enabled_text = "ON" if cal_enabled else "OFF"
+            self.display.text(f"{cursor}Enable: {enabled_text}", 0, 0, 1)
 
             # Punti di calibrazione
             for i, point in enumerate(cal_points):
-                y = 12 + i * 12
-                cursor = ">" if selected_row == i else " "
-                if editing and selected_row == i:
+                y = 12 + (i + 1) * 10
+                cursor = ">" if selected_row == (i + 1) else " "
+                if editing and selected_row == (i + 1):
                     # Evidenzia valore in edit
-                    text = f"{cursor}{point['raw']:5.1f} >[{edit_value:5.1f}]"
+                    text = f"{cursor}{point['raw']:4.1f}>[{edit_value:5.1f}]"
                 else:
-                    text = f"{cursor}{point['raw']:5.1f}  {point['real']:6.1f}"
+                    text = f"{cursor}{point['raw']:4.1f} {point['real']:5.1f}"
                 self.display.text(text[:16], 0, y, 1)
 
             # Riga Update
-            y = 12 + len(cal_points) * 12
-            cursor = ">" if selected_row == len(cal_points) else " "
+            y = 12 + (len(cal_points) + 1) * 10
+            cursor = ">" if selected_row == (len(cal_points) + 1) else " "
             self.display.text(f"{cursor}Update", 0, y, 1)
 
             # Footer hint
             if editing:
                 self.display.text("UP/DN:chg R:ok", 0, 56, 1)
             else:
-                self.display.text("F:read L:edit", 0, 56, 1)
+                self.display.text("F:tgl/rd L:ed", 0, 56, 1)
 
             self.display.show()
 
         # Loop principale menu calibrazione
         running = True
+        total_rows = len(cal_points) + 2  # Enable + 2 punti + Update
         while running:
             draw_screen()
 
@@ -307,32 +312,36 @@ class SetupApp:
                     edit_value = max(edit_value, 0)
                 elif read_button(btn_right):
                     # Conferma edit
-                    cal_points[selected_row]['real'] = edit_value
+                    cal_points[selected_row - 1]['real'] = edit_value
                     editing = False
 
             else:
                 # Modalità selezione riga
                 if read_button(btn_up):
-                    selected_row = (selected_row - 1) % (len(cal_points) + 1)
+                    selected_row = (selected_row - 1) % total_rows
                 elif read_button(btn_down):
-                    selected_row = (selected_row + 1) % (len(cal_points) + 1)
+                    selected_row = (selected_row + 1) % total_rows
                 elif read_button(btn_fire):
-                    # Leggi temperatura e scrivi in RAW
-                    if selected_row < len(cal_points):
+                    if selected_row == 0:
+                        # Toggle Enable
+                        cal_enabled = not cal_enabled
+                    elif 1 <= selected_row <= len(cal_points):
+                        # Leggi temperatura e scrivi in RAW
                         temp_raw = sensor.read_object_temp_raw()
                         if temp_raw is not None:
-                            cal_points[selected_row]['raw'] = temp_raw
+                            cal_points[selected_row - 1]['raw'] = temp_raw
                 elif read_button(btn_left):
-                    if selected_row < len(cal_points):
+                    if 1 <= selected_row <= len(cal_points):
                         # Entra in edit mode
-                        edit_value = cal_points[selected_row]['real']
+                        edit_value = cal_points[selected_row - 1]['real']
                         editing = True
                     else:
                         # Esci dal menu
                         running = False
                 elif read_button(btn_right):
-                    if selected_row == len(cal_points):
+                    if selected_row == total_rows - 1:
                         # Update: salva calibrazione
+                        self.config.set('calibration.enabled', cal_enabled)
                         self.config.set('calibration.point1_raw', cal_points[0]['raw'])
                         self.config.set('calibration.point1_real', cal_points[0]['real'])
                         self.config.set('calibration.point2_raw', cal_points[1]['raw'])

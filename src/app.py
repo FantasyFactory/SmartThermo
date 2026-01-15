@@ -85,6 +85,18 @@ class ThermoApp:
         # Tapo controller (lazy init)
         self.tapo = None
 
+    @property
+    def effective_temp(self):
+        """
+        Restituisce la temperatura effettiva da usare per display/controllo
+        Se calibration è abilitata usa object_temp (calibrata)
+        Altrimenti usa object_temp_raw (non calibrata)
+        """
+        if self.config.calibration_enabled:
+            return self.object_temp
+        else:
+            return self.object_temp_raw
+
     def _init_hardware(self):
         """Inizializza hardware (sensore, pulsanti, laser)"""
         # Sensore MLX90614 con calibrazione
@@ -173,8 +185,8 @@ class ThermoApp:
                 # Aggiorna letture se necessario
                 if self._should_update_reading(current_time):
                     self._read_temperatures()
-                    if self.config.reading_mode == self.READING_CONTINUE and self.buzzer and self.object_temp is not None:
-                        self.buzzer.note_on(int(self.object_temp*100))
+                    if self.config.reading_mode == self.READING_CONTINUE and self.buzzer and self.effective_temp is not None:
+                        self.buzzer.note_on(int(self.effective_temp*100))
                     last_display_update = current_time
 
                 # Aggiorna display
@@ -292,9 +304,9 @@ class ThermoApp:
         self.ambient_temp = amb_temp
         self.last_reading_time = time.ticks_ms()
 
-        # Aggiorna storico per grafico
-        if obj_temp is not None:
-            self.temp_history.append(obj_temp)
+        # Aggiorna storico per grafico con temperatura effettiva
+        if self.effective_temp is not None:
+            self.temp_history.append(self.effective_temp)
             if len(self.temp_history) > self.max_history:
                 self.temp_history.pop(0)
 
@@ -360,8 +372,8 @@ class ThermoApp:
         """Disegna modalità Reading"""
         if self.config.bignum_enabled and hasattr(self, 'big'):
             # Modalità BigNum: temperatura grande
-            if self.object_temp is not None:
-                self.big.printNum(self.object_temp, 0, 15)
+            if self.effective_temp is not None:
+                self.big.printNum(self.effective_temp, 0, 15)
             else:
                 self.display.text("--.-C", 40, 26, 1)
         else:
@@ -369,8 +381,8 @@ class ThermoApp:
             y_obj = 20
             y_amb = 36
 
-            if self.object_temp is not None:
-                self.display.text(f"Obj: {self.object_temp:.1f}C", 10, y_obj, 1)
+            if self.effective_temp is not None:
+                self.display.text(f"Obj: {self.effective_temp:.1f}C", 10, y_obj, 1)
             else:
                 self.display.text("Obj: --.-C", 10, y_obj, 1)
 
@@ -386,8 +398,8 @@ class ThermoApp:
 
         # Riga 1: temperatura corrente
         y1 = 18
-        if self.object_temp is not None:
-            self.display.text(f"Temp: {self.object_temp:.1f}C", 5, y1, 1)
+        if self.effective_temp is not None:
+            self.display.text(f"Temp: {self.effective_temp:.1f}C", 5, y1, 1)
         else:
             self.display.text("Temp: --.-C", 5, y1, 1)
 
@@ -402,8 +414,8 @@ class ThermoApp:
         y3 = 46
         if active:
             # Mostra output PID
-            if self.object_temp is not None:
-                output = self.pid.update(self.object_temp)
+            if self.effective_temp is not None:
+                output = self.pid.update(self.effective_temp)
                 state = "ON" if output > 50 else "OFF"
                 self.display.text(f"PID:{output:.0f}% {state}", 5, y3, 1)
             else:
@@ -448,11 +460,11 @@ class ThermoApp:
 
     def _handle_thermostat(self):
         """Gestisce logica termostato con PID"""
-        if not self.object_temp or not self.tapo:
+        if not self.effective_temp or not self.tapo:
             return
 
-        # Aggiorna PID
-        output = self.pid.update(self.object_temp)
+        # Aggiorna PID con temperatura effettiva
+        output = self.pid.update(self.effective_temp)
 
         # Controllo on/off semplice basato su output PID
         # Se output > 50% accendi, altrimenti spegni
