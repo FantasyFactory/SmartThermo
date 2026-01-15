@@ -260,10 +260,14 @@ class ThermoApp:
                 self.current_mode = (self.current_mode + 1) % 3
                 self._on_mode_change()
 
-        # LEFT: in modalità Thermostat entra in editing target
+        # LEFT: cambia materiale (emissività) al volo, oppure editing target in Thermostat
         elif self._read_button(self.btn_left):
-            if self.current_mode == self.MODE_THERMOSTAT:
+            if self.current_mode == self.MODE_THERMOSTAT and not self.editing_target:
+                # Entra in editing target
                 self.editing_target = True
+            else:
+                # Cambia materiale (cicla tra i preset)
+                self._cycle_emissivity_material()
 
         # RIGHT: conferma editing o entra in setup
         elif self._read_button(self.btn_right):
@@ -523,6 +527,39 @@ class ThermoApp:
             self.last_btn_time = now
             return True
         return False
+
+    def _cycle_emissivity_material(self):
+        """Cicla tra i preset di materiali per emissività"""
+        presets = self.config.emissivity_presets
+        if not presets:
+            return
+
+        # Trova indice materiale corrente
+        current_material = self.config.emissivity_material_type
+        try:
+            current_idx = next(i for i, p in enumerate(presets) if p['name'] == current_material)
+        except StopIteration:
+            current_idx = 0
+
+        # Passa al prossimo materiale (ciclico)
+        next_idx = (current_idx + 1) % len(presets)
+        next_material = presets[next_idx]['name']
+        next_value = presets[next_idx]['value']
+
+        # Salva nel config
+        self.config.set('emissivity.material_type', next_material)
+
+        # Mostra brevemente il materiale selezionato
+        self.display.fill(0)
+        self.display.text("Material:", 20, 15, 1)
+        self.display.text(next_material, 10, 30, 1)
+        self.display.text(f"e = {next_value:.2f}", 25, 45, 1)
+        self.display.show()
+
+        # Beep di conferma
+        self._beep()
+
+        time.sleep(1)
 
     def _enter_setup(self):
         """Entra nell'app di setup"""

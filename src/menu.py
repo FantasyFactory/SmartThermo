@@ -273,9 +273,20 @@ class Menu:
                     self.scroll_offset = 0
                     return True
             elif current_item.type == MenuItem.TYPE_ACTION:
-                # Esegue l'azione
+                # Esegue l'azione con gestione errori
                 if current_item.action:
-                    current_item.action()
+                    try:
+                        current_item.action()
+                    except Exception as e:
+                        print(f"Error executing action '{current_item.label}': {e}")
+                        # Mostra errore sul display
+                        self.display.fill(0)
+                        self.display.text("Action Error!", 0, 10, 1)
+                        self.display.text(current_item.label[:16], 0, 25, 1)
+                        self.display.text(str(e)[:16], 0, 40, 1)
+                        self.display.show()
+                        import time
+                        time.sleep(2)
                 return True
             elif current_item.type in [MenuItem.TYPE_INT, MenuItem.TYPE_FLOAT,
                                        MenuItem.TYPE_BOOL, MenuItem.TYPE_LIST, MenuItem.TYPE_IP]:
