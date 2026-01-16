@@ -64,7 +64,7 @@ class SetupApp:
             MenuItem(
                 MenuItem.TYPE_LIST,
                 "Reading",
-                choices=["OnShoot", "Cont"],
+                choices=["OnShoot", "Continue"],
                 get_value=lambda: self.config.reading_mode,
                 set_value=lambda v: self.config.set('preferences.reading', v)
             ),
