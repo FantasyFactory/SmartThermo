@@ -1,45 +1,71 @@
 {
-  "pins": {
-    "PIN_SDA": 5,
-    "PIN_SCL": 6,
-    "PIN_LEFT": 3,
-    "PIN_RIGHT": 4,
-    "PIN_FIRE": 0,
-    "PIN_LASER": 9,
-    "PIN_UP": 10,
-    "PIN_DOWN": 7,
-    "PIN_BUZZER": 1
-  },
   "wifi": {
-    "mode": "AP",
-    "known": [
-      {"ssid": "LabCeramica", "password": "Cucculullu"},
-      {"ssid": "redmi", "password": "cucculullu"}
-    ],
     "selected": 0,
-    "ap_ip": "192.168.4.1",
+    "known": [
+      {
+        "ssid": "LabCeramica",
+        "password": "Cucculullu"
+      },
+      {
+        "ssid": "redmi",
+        "password": "cucculullu"
+      }
+    ],
+    "mode": "STA",
     "ap_credentials": {
       "ssid": "SmartThermo",
       "password": "12345678"
-    }
+    },
+    "ap_ip": "192.168.4.1"
+  },
+  "pins": {
+    "PIN_BUZZER": 0,
+    "PIN_SDA": 5,
+    "PIN_LEFT": 8,
+    "PIN_RIGHT": 2,
+    "PIN_DOWN": 4,
+    "PIN_LASER": 1,
+    "PIN_SCL": 6,
+    "PIN_UP": 10,
+    "PIN_FIRE": 3
+  },
+  "tapo": {
+    "enabled": true,
+    "ip": "192.168.137.120",
+    "email": "corrado.casoni@gmail.com",
+    "password": "CicciBabau12!"
+  },
+  "thermostat": {
+    "d": 0,
+    "p": 1,
+    "active": true,
+    "i": 0,
+    "target": 20
   },
   "preferences": {
     "laser": true,
-    "bignum": false,
+    "refresh": 100,
     "reading": "OnShoot",
-    "refresh": 500
+    "bignum": true
   },
-  "thermostat": {
-    "active": false,
-    "target": 50,
-    "p": 1.0,
-    "i": 0.0,
-    "d": 0.0
+  "calibration": {
+    "enabled": true,
+    "point1_raw": 36.3,
+    "point1_real": 60,
+    "point2_raw": 58.2,
+    "point2_real": 100
   },
-  "tapo": {
-    "enabled": false,
-    "ip": "192.168.137.242",
-    "email": "corrado.casoni@gmail.com",
-    "password": "CicciBabau12!"
+  "emissivity": {
+    "material_type": "KNSB",
+    "custom_value": 0.90,
+    "presets": [
+      {"name": "Skin", "value": 0.98},
+      {"name": "Plastic", "value": 0.95},
+      {"name": "KNSB", "value": 0.90},
+      {"name": "Ceramic", "value": 0.92},
+      {"name": "M.Matt", "value": 0.70},
+      {"name": "M.Shiny", "value": 0.20},
+      {"name": "Custom", "value": 0.90}
+    ]
   }
-}
+} 

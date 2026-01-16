@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartThermo Control</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌡️ SmartThermo</h1>
+            <p class="subtitle">Smart IR Thermometer Control Panel</p>
+        </header>
+
+        <!-- Temperature Display -->
+        <section class="card">
+            <h2>Temperature Readings</h2>
+            <div class="temp-grid">
+                <div class="temp-box">
+                    <div class="temp-label">Calibrated</div>
+                    <div class="temp-value" id="objTemp">--.-</div>
+                    <div class="temp-unit">°C</div>
+                </div>
+                <div class="temp-box">
+                    <div class="temp-label">Raw</div>
+                    <div class="temp-value" id="rawTemp">--.-</div>
+                    <div class="temp-unit">°C</div>
+                </div>
+                <div class="temp-box">
+                    <div class="temp-label">Ambient</div>
+                    <div class="temp-value" id="ambTemp">--.-</div>
+                    <div class="temp-unit">°C</div>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="refreshBtn">🔄 Refresh</button>
+        </section>
+
+        <!-- Thermostat Control -->
+        <section class="card">
+            <h2>Thermostat</h2>
+            <div class="control-group">
+                <label class="switch-label">
+                    <input type="checkbox" id="thermostatActive" class="switch">
+                    <span>Active</span>
+                </label>
+            </div>
+            <div class="control-group">
+                <label for="targetTemp">Target Temperature</label>
+                <div class="input-group">
+                    <input type="number" id="targetTemp" min="0" max="150" step="1">
+                    <span class="unit">°C</span>
+                </div>
+            </div>
+            <button class="btn btn-success" id="saveThermostatBtn">💾 Save Thermostat</button>
+        </section>
+
+        <!-- WiFi Configuration -->
+        <section class="card" id="wifiSection">
+            <h2>WiFi Configuration</h2>
+
+            <div class="control-group">
+                <button class="btn btn-secondary" id="scanBtn">📡 Scan Networks</button>
+            </div>
+
+            <div id="networkList" class="network-list" style="display: none;">
+                <!-- Networks will be populated here -->
+            </div>
+
+            <div id="wifiForm" style="display: none;">
+                <div class="control-group">
+                    <label for="wifiSsid">Selected Network</label>
+                    <input type="text" id="wifiSsid" readonly>
+                </div>
+                <div class="control-group">
+                    <label for="wifiPassword">Password</label>
+                    <input type="password" id="wifiPassword" placeholder="Enter password">
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="testWifiBtn">🔍 Test Connection</button>
+                    <button class="btn btn-success" id="saveWifiBtn">💾 Save WiFi</button>
+                </div>
+            </div>
+
+            <div id="wifiStatus" class="status-box" style="display: none;"></div>
+        </section>
+
+        <!-- Configuration Editor -->
+        <section class="card">
+            <h2>Advanced Configuration</h2>
+            <div class="control-group">
+                <label for="configEditor">JSON Configuration</label>
+                <textarea id="configEditor" rows="15"></textarea>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="loadConfigBtn">📥 Load Config</button>
+                <button class="btn btn-success" id="saveConfigBtn">💾 Save Config</button>
+            </div>
+        </section>
+
+        <!-- Status -->
+        <section class="card">
+            <h2>System Status</h2>
+            <div id="statusBox" class="status-box">
+                <div class="status-item">
+                    <strong>WiFi Mode:</strong> <span id="wifiMode">--</span>
+                </div>
+                <div class="status-item">
+                    <strong>IP Address:</strong> <span id="ipAddress">--</span>
+                </div>
+                <div class="status-item">
+                    <strong>Connected SSID:</strong> <span id="connectedSsid">--</span>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>SmartThermo v1.0 - ESP32-C3 MicroPython</p>
+        </footer>
+    </div>
+
+    <script>
+        // Test immediato - questo DEVE comparire nella console
+        console.log('=== INLINE SCRIPT EXECUTING ===');
+        console.log('DOM ready state:', document.readyState);
+
+        // Test caricamento app.js
+        window.addEventListener('error', function(e) {
+            console.error('ERROR loading script:', e.filename, e.message);
+        }, true);
+    </script>
+
+    <script src="app.js"></script>
+
+    <script>
+        // Questo viene eseguito DOPO app.js
+        console.log('=== AFTER APP.JS ===');
+        console.log('DOMContentLoaded listeners:', typeof window.addEventListener);
+    </script>
+</body>
+</html>

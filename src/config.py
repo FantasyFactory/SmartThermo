@@ -229,6 +229,104 @@ class Config:
     def tapo_ip(self, value):
         self.set('tapo.ip', value)
 
+    # === Calibration ===
+
+    @property
+    def calibration_enabled(self):
+        """Abilita/disabilita la calibrazione del sensore"""
+        return self.get('calibration.enabled', False)
+
+    @calibration_enabled.setter
+    def calibration_enabled(self, value):
+        self.set('calibration.enabled', value)
+
+    @property
+    def calibration_point1_raw(self):
+        """Primo punto di calibrazione - valore letto dal sensore"""
+        return self.get('calibration.point1_raw', 36.3)
+
+    @calibration_point1_raw.setter
+    def calibration_point1_raw(self, value):
+        self.set('calibration.point1_raw', value)
+
+    @property
+    def calibration_point1_real(self):
+        """Primo punto di calibrazione - valore reale"""
+        return self.get('calibration.point1_real', 60.0)
+
+    @calibration_point1_real.setter
+    def calibration_point1_real(self, value):
+        self.set('calibration.point1_real', value)
+
+    @property
+    def calibration_point2_raw(self):
+        """Secondo punto di calibrazione - valore letto dal sensore"""
+        return self.get('calibration.point2_raw', 58.2)
+
+    @calibration_point2_raw.setter
+    def calibration_point2_raw(self, value):
+        self.set('calibration.point2_raw', value)
+
+    @property
+    def calibration_point2_real(self):
+        """Secondo punto di calibrazione - valore reale"""
+        return self.get('calibration.point2_real', 100.0)
+
+    @calibration_point2_real.setter
+    def calibration_point2_real(self, value):
+        self.set('calibration.point2_real', value)
+
+    # === Emissivity ===
+
+    @property
+    def emissivity_material_type(self):
+        """Tipo di materiale selezionato per emissività"""
+        return self.get('emissivity.material_type', 'KNSB')
+
+    @emissivity_material_type.setter
+    def emissivity_material_type(self, value):
+        self.set('emissivity.material_type', value)
+
+    @property
+    def emissivity_custom_value(self):
+        """Valore custom di emissività"""
+        return self.get('emissivity.custom_value', 0.90)
+
+    @emissivity_custom_value.setter
+    def emissivity_custom_value(self, value):
+        self.set('emissivity.custom_value', value)
+
+    @property
+    def emissivity_presets(self):
+        """Lista di preset emissività disponibili"""
+        return self.get('emissivity.presets', [
+            {"name": "Skin", "value": 0.98},
+            {"name": "Plastic", "value": 0.95},
+            {"name": "KNSB", "value": 0.90},
+            {"name": "Ceramic", "value": 0.92},
+            {"name": "M.Matt", "value": 0.70},
+            {"name": "M.Shiny", "value": 0.20},
+            {"name": "Custom", "value": 0.90}
+        ])
+
+    @property
+    def emissivity_value(self):
+        """
+        Restituisce il valore di emissività da usare in base al materiale selezionato
+        Se "Custom" usa custom_value, altrimenti cerca nel preset
+        """
+        material = self.emissivity_material_type
+        if material == "Custom":
+            return self.emissivity_custom_value
+
+        # Cerca nel preset
+        for preset in self.emissivity_presets:
+            if preset['name'] == material:
+                return preset['value']
+
+        # Fallback
+        return 0.90
+
     def _get_default_config(self):
         """Configurazione di default se il file non esiste"""
         return {
@@ -271,6 +369,26 @@ class Config:
                 "ip": "192.168.137.242",
                 "email": "",
                 "password": ""
+            },
+            "calibration": {
+                "enabled": True,
+                "point1_raw": 36.3,
+                "point1_real": 60.0,
+                "point2_raw": 58.2,
+                "point2_real": 100.0
+            },
+            "emissivity": {
+                "material_type": "KNSB",
+                "custom_value": 0.90,
+                "presets": [
+                    {"name": "Skin", "value": 0.98},
+                    {"name": "Plastic", "value": 0.95},
+                    {"name": "KNSB", "value": 0.90},
+                    {"name": "Ceramic", "value": 0.92},
+                    {"name": "M.Matt", "value": 0.70},
+                    {"name": "M.Shiny", "value": 0.20},
+                    {"name": "Custom", "value": 0.90}
+                ]
             }
         }
 

@@ -44,8 +44,16 @@ src/
 ├── config.json          # File di configurazione
 ├── menu.py              # Sistema di menu generico
 ├── setup.py             # App di configurazione
-└── drivers/
-    └── ssd1306.py       # Driver display OLED
+├── app.py               # App principale termometro
+├── wifi_manager.py      # Gestione WiFi (STA/AP/BOTH)
+├── web_server.py        # Web server HTTP con API REST
+├── drivers/
+│   ├── ssd1306.py       # Driver display OLED
+│   └── mlx90614.py      # Driver sensore temperatura IR
+└── static/
+    ├── index.html       # Interfaccia web
+    ├── style.css        # Stili interfaccia
+    └── app.js           # JavaScript interfaccia
 ```
 
 ### Architettura
@@ -171,16 +179,80 @@ Il progetto implementa strategie per ottimizzare la memoria limitata di MicroPyt
 - Singleton per la classe Config
 - Ricarica configurazione da JSON invece di mantenerla in memoria
 
-## TODO / App Principale
+## App Principale
 
-L'app principale del termometro è ancora da implementare. Dovrà includere:
-- Lettura dal sensore MLX90614
-- Visualizzazione temperatura su display
-- Modalità di lettura (OnShoot/Continuous)
-- Controllo laser
-- Funzionalità termostato con PID
-- Connettività WiFi
-- Integrazione Tapo per controllo remoto
+L'app principale (`app.py`) implementa tutte le funzionalità del termometro:
+
+### Funzionalità
+
+#### Lettura Temperature
+- **Sensore MLX90614**: lettura temperatura oggetto e ambiente via I2C
+- **Modalità OnShoot**: legge temperatura quando si preme il pulsante FIRE
+- **Modalità Continue**: lettura continua con refresh configurabile (50-1000ms)
+- **Feedback**: beep opzionale alla lettura e controllo laser
+
+#### Display
+- **Modalità normale**: mostra entrambe le temperature e target termostato
+- **Modalità BigNum**: visualizza solo temperatura oggetto in grande
+- **Refresh rate configurabile**: da 50ms a 1000ms
+
+#### Connettività WiFi
+- **Modalità Off**: nessuna connessione
+- **Modalità STA**: client, connessione a rete WiFi esistente
+- **Modalità AP**: access point per configurazione
+- **Modalità BOTH**: client + access point simultanei
+- **Fallback automatico**: se STA fallisce, passa ad AP
+
+#### Web Server & API REST
+
+Il web server è accessibile all'indirizzo IP del dispositivo (porta 80) e fornisce:
+
+**API Temperature:**
+- `GET /api/temp` - Lettura temperatura oggetto
+- `GET /api/ambient` - Lettura temperatura ambiente
+
+**API Termostato:**
+- `GET /api/target` - Ottiene target e stato termostato
+- `POST /api/target` - Imposta target e attiva/disattiva
+
+**API Configurazione:**
+- `GET /api/config` - Ottiene configurazione completa
+- `POST /api/config` - Aggiorna configurazione
+
+**API WiFi:**
+- `GET /api/wifi/scan` - Scansiona reti disponibili
+- `POST /api/wifi/test` - Testa connessione a rete
+- `POST /api/wifi/save` - Salva configurazione WiFi
+
+**API Status:**
+- `GET /api/status` - Status completo del sistema
+
+#### Interfaccia Web
+
+Interfaccia web responsive accessibile via browser:
+- **Dashboard temperature**: visualizzazione real-time con auto-refresh
+- **Controllo termostato**: attiva/disattiva e imposta target
+- **Configurazione WiFi**: scan reti, test connessione, salvataggio
+- **Editor configurazione**: modifica diretta del JSON
+- **System status**: info WiFi, IP, SSID connesso
+
+### Termostato (Base)
+
+Funzionalità termostato di base implementata:
+- Attivazione/disattivazione via config o web
+- Impostazione target temperature
+- Visualizzazione target su display
+- TODO: Implementazione controllo PID completo
+- TODO: Integrazione Tapo per controllo remoto
+
+## TODO
+
+Funzionalità da completare:
+- **Controllo PID**: implementazione algoritmo PID per termostato
+- **Auto-tune PID**: procedura automatica di calibrazione parametri
+- **Integrazione Tapo**: controllo smart plug Tapo per attuazione termostato
+- **Logging**: salvataggio storico temperature su file
+- **Grafici**: visualizzazione trend temperature su interfaccia web
 
 ## Licenza
 MIT License

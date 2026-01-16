@@ -35,6 +35,23 @@ class SmartThermo:
         devices = self.i2c.scan()
         print(f"I2C devices found: {[hex(d) for d in devices]}")
 
+        # Inizializza pulsanti per controllo avvio PRIMA di tutto
+        # RIGHT per entrare in setup all'avvio
+        # FIRE per bloccare l'avvio (debug mode)
+        print("Initializing buttons...")
+        self.btn_right = Pin(self.config.PIN_RIGHT, Pin.IN, Pin.PULL_UP)
+        self.btn_fire = Pin(self.config.PIN_FIRE, Pin.IN, Pin.PULL_UP)
+
+        # Breve delay per stabilizzare i pin
+        time.sleep(0.05)
+
+        # Verifica subito se FIRE è premuto
+        if self.btn_fire.value() == 0:
+            print("\n" + "="*40)
+            print("!!! DEBUG MODE DETECTED !!!")
+            print("FIRE button is pressed")
+            print("="*40 + "\n")
+
         # Inizializza display OLED
         try:
             self.display = SSD1306_I2C(128, 64, self.i2c)
@@ -43,24 +60,33 @@ class SmartThermo:
             print(f"Error initializing display: {e}")
             self.display = None
 
-        # Mostra splash screen
+        # Mostra splash screen (dà 1 secondo per premere FIRE)
         if self.display:
             self.show_splash()
-
-        # Inizializza pulsante per entrare in setup
-        # Useremo il pulsante FIRE (PIN 0) tenuto premuto all'avvio
-        self.btn_fire = Pin(self.config.PIN_FIRE, Pin.IN, Pin.PULL_UP)
 
     def show_splash(self):
         """Mostra schermata di avvio"""
         self.display.fill(0)
-        self.display.text("SmartThermo", 20, 20, 1)
-        self.display.text("v1.0", 50, 35, 1)
+        self.display.text("SmartThermo", 20, 10, 1)
+        self.display.text("v1.0", 50, 25, 1)
+        self.display.text("Hold FIRE", 28, 45, 1)
+        self.display.text("for Debug", 28, 55, 1)
         self.display.show()
-        time.sleep(1)
+
+        # Sleep più lungo per dare tempo di premere FIRE
+        # Durante questo tempo controlliamo continuamente
+        start = time.ticks_ms()
+        while time.ticks_diff(time.ticks_ms(), start) < 1500:  # 1.5 secondi
+            if self.btn_fire.value() == 0:
+                print("DEBUG: FIRE pressed during splash!")
+            time.sleep(0.1)
 
     def check_setup_mode(self):
-        """Controlla se entrare in modalità setup (pulsante FIRE premuto)"""
+        """Controlla se entrare in modalità setup (pulsante RIGHT premuto all'avvio)"""
+        return self.btn_right.value() == 0
+
+    def check_debug_mode(self):
+        """Controlla se entrare in debug mode (pulsante FIRE premuto all'avvio)"""
         return self.btn_fire.value() == 0
 
     def run_setup(self):
@@ -69,7 +95,7 @@ class SmartThermo:
 
         # Importa e avvia setup
         import setup
-        setup.main(self.display)
+        setup.main(self.display, self.i2c)
 
         # Cleanup del modulo setup per liberare memoria
         del sys.modules['setup']
@@ -83,20 +109,37 @@ class SmartThermo:
 
     def run_main_app(self):
         """Avvia l'app principale del termometro"""
+        # Se FIRE premuto all'avvio, entra in DEBUG MODE (non avvia l'app)
+        if self.check_debug_mode():
+            print("\n" + "="*40)
+            print("DEBUG MODE - App NOT started")
+            print("FIRE button pressed at boot")
+            print("REPL is now available")
+            print("="*40 + "\n")
+
+            if self.display:
+                self.display.fill(0)
+                self.display.text("DEBUG MODE", 25, 20, 1)
+                self.display.text("REPL Ready", 25, 35, 1)
+                self.display.show()
+
+            # Non avviare l'app - semplicemente ritorna al REPL
+            # Thonny può ora connettersi senza causare reset
+            return
+
+        # Altrimenti avvia app normale
         print("Starting main app...")
 
-        # Mostra messaggio temporaneo
-        if self.display:
-            self.display.fill(0)
-            self.display.text("Main App", 30, 20, 1)
-            self.display.text("Not yet", 35, 35, 1)
-            self.display.text("implemented", 20, 45, 1)
-            self.display.show()
+        # Importa e avvia app principale
+        import app
+        app.main(self.display, self.i2c)
 
-        # TODO: Implementare app principale
-        # Per ora loop infinito
-        while True:
-            time.sleep(1)
+        # Cleanup del modulo app per liberare memoria
+        del sys.modules['app']
+        del app
+        gc.collect()
+
+        print("Main app exited")
 
     def run(self):
         """Loop principale"""
